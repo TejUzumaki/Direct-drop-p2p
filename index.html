@@ -99,7 +99,6 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .inp::placeholder{color:var(--tx3);font-family:var(--sans);letter-spacing:0;font-size:12px}
 .inp:disabled{opacity:.3}
 
-/* Recent Connections List Styles */
 .rec-list {
   max-height: 180px;
   overflow-y: auto;
@@ -310,7 +309,6 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
       </div>
     </div>
     
-    <!-- New Recent Connections List -->
     <div class="cd cut" id="recSec" style="display:none">
       <div class="cl">Recent Connections</div>
       <div class="rec-list" id="recList"></div>
@@ -340,9 +338,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
     </button>
     <button class="btn b-gh cb-mu cutxs" id="muBtn" onclick="togMute()" style="display:none">MUTE</button>
   </div>
-  <div class="ch-bd" id="cBody">
-    <div class="mg mg-s"><div class="mb">Awaiting link...</div></div>
-  </div>
+  <div class="ch-bd" id="cBody"></div>
   <div class="ch-bar">
     <input type="text" class="ch-inp" id="mIn" placeholder="Type a message..." disabled autocomplete="off">
     <button class="sb cutxs" id="sBtn" onclick="sendMsg()" disabled aria-label="Send">
@@ -418,7 +414,8 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 <script>
 var peer=null,conn=null,localStream=null,activeCall=null,incomingCall=null;
 var friendId=null,isMuted=false,voiceOn=false,callSec=0,callInt=null;
-var isManualConnecting=false; // Used to differentiate ping errors from actual connection errors
+var isManualConnecting=false;
+var manualConnTimeout=null;
 var BASE='https://direct-drop-p2p.vercel.app';
 
 var $mId=document.getElementById('mId'),$hS=document.getElementById('hS'),$hD=document.getElementById('hD');
@@ -449,6 +446,23 @@ function getLocked(){
 }
 function rstId(){localStorage.removeItem('wz-p2p-id');location.reload()}
 
+// --- Chat History Storage ---
+function getChatHistory(id) {
+  if(!id) return [];
+  try { return JSON.parse(localStorage.getItem('dd-p2p-chat-'+id) || '[]'); }
+  catch(e) { return []; }
+}
+function saveChatMsg(id, type, text, ts) {
+  if(!id) return;
+  var hist = getChatHistory(id);
+  hist.push({t: type, txt: text, ts: ts || Date.now()});
+  if(hist.length > 200) hist = hist.slice(hist.length - 200); 
+  localStorage.setItem('dd-p2p-chat-'+id, JSON.stringify(hist));
+}
+function clearChatHistory(id) {
+  if(id) localStorage.removeItem('dd-p2p-chat-'+id);
+}
+
 // --- Recent Connections Logic ---
 function getRecents() {
   var s = localStorage.getItem('dd-p2p-recent');
@@ -457,9 +471,9 @@ function getRecents() {
 function addRecent(id) {
   if(!id) return;
   var recents = getRecents();
-  recents = recents.filter(function(r){ return r !== id; }); // Remove if already exists
-  recents.unshift(id); // Add to top
-  if (recents.length > 15) recents = recents.slice(0, 15); // Limit to 15
+  recents = recents.filter(function(r){ return r !== id; });
+  recents.unshift(id);
+  if (recents.length > 15) recents = recents.slice(0, 15);
   localStorage.setItem('dd-p2p-recent', JSON.stringify(recents));
 }
 function renderRecents() {
@@ -473,28 +487,30 @@ function renderRecents() {
   
   recents.forEach(function(id) {
     var div = document.createElement('div');
-    div.className = 'rec-item cutxs off'; // Start as offline/dim
+    div.className = 'rec-item cutxs off';
     div.setAttribute('data-id', id);
     div.innerHTML = '<div class="rec-dot"></div><span class="rec-id">'+id+'</span>';
     div.onclick = function() {
       var rid = this.getAttribute('data-id');
-      $fIn.value = rid;
-      manConn();
+      openChatWithPeer(rid);
     };
     $recList.appendChild(div);
   });
 
-  // Check presence for all recents
   setTimeout(function() {
     recents.forEach(function(id) {
-      checkPeerPresence(id);
+      // Don't ping if we are already connected to them
+      if (conn && conn.open && conn.peer === id) {
+        updatePeerStatusUI(id, true);
+      } else {
+        checkPeerPresence(id);
+      }
     });
-  }, 500);
+  }, 100);
 }
 function checkPeerPresence(peerId) {
   if (!peer || peer.destroyed) return;
   var status = 'checking';
-  
   try {
     var p = peer.connect(peerId, { metadata: { ping: true }, reliable: false });
     var timeout = setTimeout(function() {
@@ -536,7 +552,116 @@ function updatePeerStatusUI(id, isOnline) {
     }
   }
 }
-// --- End Recent Connections Logic ---
+
+// --- Message Rendering ---
+function appendMsgToDOM(t, txt, ts) {
+  var d=document.createElement('div'),b=document.createElement('div'),tm=document.createElement('div');
+  tm.className='mt';
+  var now = ts ? new Date(ts) : new Date();
+  var h=now.getHours(),m=now.getMinutes();
+  tm.textContent=(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+  if(t==='sys'){d.className='mg mg-s';b.className='mb';b.textContent=txt}
+  else if(t==='you'){d.className='mg mg-y';b.className='mb';b.textContent=txt}
+  else{d.className='mg mg-p';b.className='mb';b.textContent=txt}
+  d.appendChild(b);d.appendChild(tm);$cBody.appendChild(d);$cBody.scrollTop=$cBody.scrollHeight;
+}
+
+function addMsg(t, txt) {
+  var ts = Date.now();
+  if (friendId && t !== 'sys') { 
+    saveChatMsg(friendId, t, txt, ts);
+  }
+  appendMsgToDOM(t, txt, ts);
+}
+
+function loadChatHistory(id) {
+  $cBody.innerHTML = '';
+  var hist = getChatHistory(id);
+  if (hist.length === 0) {
+    appendMsgToDOM('sys', 'No messages yet. Say hi!');
+  } else {
+    hist.forEach(function(msg) {
+      appendMsgToDOM(msg.t, msg.txt, msg.ts);
+    });
+  }
+}
+
+// --- Connection Logic ---
+function openChatWithPeer(id) {
+  if (!id || id === $mId.textContent) {
+    if(id === $mId.textContent) toast('Cannot link to yourself.');
+    return;
+  }
+
+  // Clear any pending manual connection timeout
+  if (manualConnTimeout) clearTimeout(manualConnTimeout);
+
+  // If already connected to this peer, just open the chat
+  if (conn && conn.open && conn.peer === id) {
+    friendId = id;
+    loadChatHistory(id);
+    $cPeer.textContent = friendId;
+    $mIn.disabled = false; $sBtn.disabled = false; $callBtn.disabled = false;
+    $cSub.textContent = 'Online';
+    $cSub.className = 'ch-ps lv';
+    switchToChat();
+    return;
+  }
+
+  // If connected to a DIFFERENT peer, close the old one first
+  if (conn) {
+    try { conn.close(); } catch(e) {}
+    conn = null;
+  }
+
+  friendId = id;
+  loadChatHistory(id); 
+  $cPeer.textContent = friendId;
+  
+  // Setup UI for "Connecting..."
+  $cSub.textContent = 'Connecting...';
+  $cSub.className = 'ch-ps';
+  $mIn.disabled = true; $sBtn.disabled = true; $callBtn.disabled = true;
+  switchToChat();
+  
+  // Attempt connection in background
+  setHdr('LINKING','lk');
+  isManualConnecting = true;
+  try {
+    conn = peer.connect(id, {reliable:true});
+    wireChat();
+    
+    // Fallback timeout: if connection doesn't open in 6 seconds, mark as offline
+    manualConnTimeout = setTimeout(function() {
+      if (isManualConnecting && (!conn || !conn.open)) {
+        if (friendId === id) { 
+          $cSub.textContent = 'Offline';
+          $cSub.className = 'ch-ps';
+          $mIn.disabled = true; $sBtn.disabled = true; $callBtn.disabled = true;
+          isManualConnecting = false;
+          if (conn) { try { conn.close(); } catch(e){} conn = null; }
+          setHdr('ONLINE','on');
+        }
+      }
+    }, 6000);
+
+  } catch(e) {
+    console.error("Connect error", e);
+    handleManualConnError(id);
+  }
+}
+
+function handleManualConnError(id) {
+  if (manualConnTimeout) clearTimeout(manualConnTimeout);
+  if (friendId === id) {
+    $cSub.textContent = 'Offline';
+    $cSub.className = 'ch-ps';
+    $mIn.disabled = true; $sBtn.disabled = true; $callBtn.disabled = true;
+    isManualConnecting = false;
+    if (conn) { try { conn.close(); } catch(e){} conn = null; }
+    setHdr('ONLINE','on');
+  }
+}
 
 function drawQR(canvas,size){
   var myId=getLocked(),url=BASE+'/?connect='+encodeURIComponent(myId);
@@ -570,27 +695,15 @@ function shrQR(){
 
 function setHdr(t,c){$hS.textContent=t;$hS.className='hdr-s '+c;$hD.className='dt '+c}
 
-function addMsg(t,txt){
-  var d=document.createElement('div'),b=document.createElement('div'),tm=document.createElement('div');
-  tm.className='mt';
-  var now=new Date(),h=now.getHours(),m=now.getMinutes();
-  tm.textContent=(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
-  if(t==='sys'){d.className='mg mg-s';b.className='mb';b.textContent=txt}
-  else if(t==='you'){d.className='mg mg-y';b.className='mb';b.textContent=txt}
-  else{d.className='mg mg-p';b.className='mb';b.textContent=txt}
-  d.appendChild(b);d.appendChild(tm);$cBody.appendChild(d);$cBody.scrollTop=$cBody.scrollHeight;
-}
-
 function toast(m){$tst.textContent=m;$tst.classList.add('show');setTimeout(function(){$tst.classList.remove('show')},1800)}
 
 function switchToChat(){
   $sSetup.classList.remove('on');$sChat.classList.add('on');
-  $sCnSec.style.display='block';$mIn.focus();
+  $sCnSec.style.display='block';
 }
 function goBack(){
   if(voiceOn)endCall();
   $sChat.classList.remove('on');$sSetup.classList.add('on');
-  // Re-check recent peers when returning to setup
   renderRecents(); 
 }
 function openSet(){$sBg.classList.add('op');$sDr.classList.add('op')}
@@ -615,8 +728,9 @@ function stopTimer(){if(callInt){clearInterval(callInt);callInt=null}}
 
 function setCallUI(state){
   $cBar.classList.remove('show');$callBtn.classList.remove('ring');$muBtn.style.display='none';
-  $cSub.className='ch-ps';$cSub.textContent='Connected';
-  if(state==='idle'){$callBtn.disabled=!conn||!conn.open}
+  if(state==='idle'){
+    $callBtn.disabled=!conn||!conn.open;
+  }
   else if(state==='calling'){$callBtn.classList.add('ring');$cSub.textContent='Ringing...';$cSub.className='ch-ps lv'}
   else if(state==='connected'){
     $cBar.classList.add('show');$muBtn.style.display='inline-flex';
@@ -638,34 +752,64 @@ function initPeer(){
 
   peer.on('open',function(id){
     setHdr('ONLINE','on');$cBtn.disabled=false;$idEr.classList.remove('show');
-    renderRecents(); // Load recent connections list
+    renderRecents();
     var p=new URLSearchParams(window.location.search),t=p.get('connect');
     if(t&&t.trim()!==id){$fIn.value=t.trim();manConn();window.history.replaceState({},'',window.location.pathname)}
   });
 
   peer.on('connection',function(dc){
-    // Ignore ping connections instantly so it doesn't break active sessions
     if (dc.metadata && dc.metadata.ping) {
       dc.on('open', function() { try { dc.close(); } catch(e){} });
       return;
     }
     if(conn&&conn.open){dc.on('open',function(){dc.close()});return}
-    conn=dc;friendId=dc.peer;wireChat();
+    
+    conn=dc;
+    friendId=dc.peer;
+    loadChatHistory(friendId);
+    $cPeer.textContent=friendId;
+    $cSub.textContent='Online';
+    $cSub.className='ch-ps lv';
+    $mIn.disabled=false;$sBtn.disabled=false;$callBtn.disabled=false;
+    switchToChat();
+    wireChat();
   });
 
   peer.on('call',function(call){
+    // If we are not connected via data channel, load history for incoming call
+    if (!conn || !conn.open || conn.peer !== call.peer) {
+      if (conn) { try { conn.close(); } catch(e){} conn = null; }
+      friendId = call.peer;
+      loadChatHistory(friendId);
+      $cPeer.textContent = friendId;
+      switchToChat();
+    }
+    
     incomingCall=call;$coId.textContent=call.peer;
     $cOv.classList.add('show');setCallUI('incoming');
   });
 
   peer.on('error',function(err){
     console.error('PeerJS:',err.type,err);
-    if(err.type==='unavailable-id'){setHdr('CONFLICT','er');$idEr.classList.add('show')}
+    if(err.type==='unavailable-id'){
+      setHdr('CONFLICT','er');
+      $idEr.classList.add('show');
+      toast('Callsign conflict. Regenerating...');
+      localStorage.removeItem('wz-p2p-id');
+      setTimeout(function(){ location.reload(); }, 2000);
+    }
     else if(err.type==='peer-unavailable'){
-      // If we aren't manually connecting, it's just a ping failure checking presence
-      if (!isManualConnecting) return; 
-      addMsg('sys','Peer not found. Check callsign.');setHdr('ONLINE','on');$fIn.disabled=false;$cBtn.disabled=false;
-      isManualConnecting = false;
+      // Parse peer ID from error message to ensure we only handle errors for the active connection
+      var match = err.message.match(/peer ([A-Z0-9-]+)/i);
+      var errPeerId = match ? match[1].toUpperCase() : null;
+
+      if (isManualConnecting && errPeerId === friendId) {
+        handleManualConnError(friendId);
+      }
+    }
+    else if(err.type==='network' || err.type==='server-error' || err.type==='socket-error' || err.type==='socket-closed'){
+      setHdr('RECONNECTING','lk');
+      if(!peer.destroyed) try{peer.reconnect()}catch(e){}
     }
     else{setHdr('ERROR','er');addMsg('sys','Error: '+err.type)}
   });
@@ -675,43 +819,77 @@ function initPeer(){
 
 function manConn(){
   var t=$fIn.value.trim().toUpperCase();
-  if(!t)return;if(t===$mId.textContent){addMsg('sys','Cannot link to yourself.');return}
-  setHdr('LINKING','lk');$fIn.disabled=true;$cBtn.disabled=true;
-  isManualConnecting = true; // Mark true so global error knows it's a real connection attempt
-  conn=peer.connect(t,{reliable:true});friendId=t;wireChat();
+  if(!t)return;
+  openChatWithPeer(t);
+  $fIn.value=''; 
+}
+
+function handleConnOpen(){
+  if (manualConnTimeout) clearTimeout(manualConnTimeout);
+  setHdr('LINKED','lk');
+  $cPeer.textContent=friendId;
+  $mIn.disabled=false;$sBtn.disabled=false;$callBtn.disabled=false;
+  $cSub.textContent='Online';
+  $cSub.className='ch-ps lv';
+  isManualConnecting = false;
+  addRecent(friendId);
 }
 
 function wireChat(){
-  conn.on('open',function(){
-    setHdr('LINKED','lk');$cPeer.textContent=friendId;
-    $mIn.disabled=false;$sBtn.disabled=false;$callBtn.disabled=false;
-    addMsg('sys','Linked with '+friendId);switchToChat();setCallUI('idle');
-    isManualConnecting = false; // Connection succeeded
-    addRecent(friendId); // Save to recent list
-  });
+  if (conn.open) handleConnOpen();
+  else conn.on('open', handleConnOpen);
+
   conn.on('data',function(d){
     if(d&&typeof d==='object'){
       if(d.t==='voice_end'){handleEnd();return}
-      if(d.t==='typing'){/* could show typing indicator */return}
+      if(d.t==='typing'){return}
       return;
     }
     if(typeof d==='string')addMsg('peer',d);
   });
-  conn.on('close',function(){addMsg('sys','Peer disconnected.');cleanConn()});
-  conn.on('error',function(){addMsg('sys','Connection error.');cleanConn()});
+  
+  conn.on('close',function(){
+    if (friendId && (!conn || conn.peer === friendId)) {
+      if (manualConnTimeout) clearTimeout(manualConnTimeout);
+      $cSub.textContent='Offline';
+      $cSub.className='ch-ps';
+      $mIn.disabled=true;$sBtn.disabled=true;$callBtn.disabled=true;
+      setCallUI('idle');
+      conn=null;
+      setHdr('ONLINE','on');
+    }
+  });
+  
+  conn.on('error',function(){
+    if (friendId && (!conn || conn.peer === friendId)) {
+      if (manualConnTimeout) clearTimeout(manualConnTimeout);
+      $cSub.textContent='Offline';
+      $cSub.className='ch-ps';
+      $mIn.disabled=true;$sBtn.disabled=true;$callBtn.disabled=true;
+      setCallUI('idle');
+      conn=null;
+      setHdr('ONLINE','on');
+    }
+  });
 }
 
-function cleanConn(){
-  setHdr('ONLINE','on');$mIn.disabled=true;$sBtn.disabled=true;
+function disconn(){
+  if(conn)try{conn.close()}catch(e){}
+  conn=null;
   $sChat.classList.remove('on');$sSetup.classList.add('on');
   $fIn.disabled=false;$cBtn.disabled=false;$sCnSec.style.display='none';
-  friendId=null;conn=null;if(voiceOn)handleEnd();setCallUI('idle');
-  isManualConnecting = false;
-  renderRecents(); // Recheck statuses when returning to setup
+  if(voiceOn)handleEnd();
+  setCallUI('idle');
+  setHdr('ONLINE','on');
+  renderRecents();
 }
 
-function disconn(){if(conn)try{conn.close()}catch(e){}cleanConn();addMsg('sys','Disconnected.')}
-function clrChat(){$cBody.innerHTML='';addMsg('sys','Messages cleared.')}
+function clrChat(){
+  if(!friendId)return;
+  clearChatHistory(friendId);
+  $cBody.innerHTML='';
+  addMsg('sys','Messages cleared.');
+}
 
 function sendMsg(){
   var t=$mIn.value.trim();if(!t||!conn||!conn.open)return;
@@ -763,7 +941,15 @@ function handleEnd(){
   voiceOn=false;isMuted=false;stopTimer();
   if(activeCall){try{activeCall.close()}catch(e){}activeCall=null}
   $rAud.srcObject=null;$cOv.classList.remove('show');
-  if(conn&&conn.open)setCallUI('idle');else setCallUI('idle');
+  if(conn&&conn.open){
+    setCallUI('idle');
+    $cSub.textContent='Online';
+    $cSub.className='ch-ps lv';
+  } else {
+    setCallUI('idle');
+    $cSub.textContent='Offline';
+    $cSub.className='ch-ps';
+  }
 }
 
 function togMute(){
