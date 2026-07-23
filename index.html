@@ -92,12 +92,19 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .b-ln:hover{color:var(--tx2)}
 .inp{
   flex:1;padding:9px 12px;border:1px solid var(--bd);background:var(--s2);
-  color:var(--tx);font-size:13px;font-family:var(--mono);letter-spacing:1px;
-  outline:none;transition:border-color .15s;min-width:0;
+  color:var(--tx);font-size:13px;font-family:var(--sans);outline:none;
+  transition:border-color .15s;min-width:0;
 }
 .inp:focus{border-color:#3A3A3C}
 .inp::placeholder{color:var(--tx3);font-family:var(--sans);letter-spacing:0;font-size:12px}
 .inp:disabled{opacity:.3}
+
+.uname-inp {
+  flex:1; padding:9px 12px; border:1px solid var(--bd); background:var(--s2);
+  color:var(--tx); font-size:14px; font-family:var(--sans); outline:none;
+  transition:border-color .15s; min-width:0;
+}
+.uname-inp:focus{border-color:#3A3A3C}
 
 .rec-list {
   max-height: 180px;
@@ -123,7 +130,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 }
 .rec-item.on .rec-dot{background:var(--olive); box-shadow:0 0 6px rgba(79,107,58,0.6)}
 .rec-id {
-  font-family:var(--mono); font-size:13px; font-weight:600; letter-spacing:1px;
+  font-family:var(--sans); font-size:14px; font-weight:600; letter-spacing:0.5px;
   color:var(--tx2); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .rec-item.on .rec-id{color:var(--wh)}
@@ -134,7 +141,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
   padding:10px 16px;flex-shrink:0;border-bottom:1px solid var(--bd2);background:var(--bg);
 }
 .ch-pi{
-  font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:1px;
+  font-family:var(--sans);font-size:15px;font-weight:700;letter-spacing:0.5px;
   color:var(--wh);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;
 }
 .ch-ps{font-size:10px;color:var(--tx3);margin-top:1px;letter-spacing:.5px}
@@ -175,11 +182,15 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .mg-y .mb{background:var(--olive);color:var(--wh)}
 .mg-p .mb{background:var(--s2);color:var(--tx);border:1px solid var(--bd2)}
 .mg-s .mb{background:none;color:var(--tx3);font-style:italic;font-size:11px;padding:4px 0}
-.mt{font-size:9px;color:var(--tx3);margin-top:2px;padding:0 4px;letter-spacing:.3px}
+.mb img, .mb video { max-width: 100%; height: auto; display: block; border-radius: 4px; margin-bottom: 4px; }
+.mb video { max-height: 200px; }
+.mt{font-size:9px;color:var(--tx3);margin-top:2px;padding:0 4px;letter-spacing:.3px;display:flex;align-items:center;gap:4px}
 .mg-y .mt{color:rgba(255,255,255,.25)}
+.tick { font-size: 10px; }
 .ch-bar{
   display:flex;gap:8px;padding:10px 16px 14px;flex-shrink:0;
   border-top:1px solid var(--bd2);background:var(--bg);
+  align-items:center;
 }
 .ch-inp{
   flex:1;padding:10px 14px;border:1px solid var(--bd);background:var(--s2);
@@ -189,15 +200,20 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .ch-inp:focus{border-color:#3A3A3C}
 .ch-inp::placeholder{color:var(--tx3)}
 .ch-inp:disabled{opacity:.3}
-.sb{
+.sb, .ab {
   width:40px;height:40px;border:none;
   background:var(--wh);color:var(--bg);cursor:pointer;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
   -webkit-tap-highlight-color:transparent;transition:opacity .1s;
 }
+.ab { background: transparent; color: var(--tx2); }
+.ab:active:not(:disabled){opacity:.6}
+.ab:disabled{opacity:.18;cursor:default;pointer-events:none}
+
 .sb:active:not(:disabled){opacity:.6}
 .sb:disabled{opacity:.18;cursor:default;pointer-events:none}
-.sb svg{width:18px;height:18px}
+.sb svg, .ab svg{width:20px;height:20px}
+
 .sbg{
   position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;
   opacity:0;pointer-events:none;transition:opacity .2s;
@@ -232,7 +248,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 }
 .cov.show{display:flex}
 .co-l{font-size:10px;font-weight:700;letter-spacing:3px;color:var(--tx3);text-transform:uppercase}
-.co-id{font-family:var(--mono);font-size:24px;font-weight:700;letter-spacing:3px;color:var(--wh)}
+.co-id{font-family:var(--sans);font-size:24px;font-weight:700;letter-spacing:1px;color:var(--wh)}
 .co-sub{font-size:12px;color:var(--tx3);letter-spacing:.5px}
 .co-a{display:flex;gap:28px;margin-top:20px}
 .co-b{
@@ -278,7 +294,12 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 <div class="scr on" id="sSetup">
   <div class="setup">
     <div class="cd cut">
-      <div class="cl">Callsign</div>
+      <div class="cl">Identity</div>
+      <div class="id-row" style="margin-bottom: 12px;">
+        <input type="text" class="uname-inp cutxs" id="unameInpSetup" placeholder="Enter username..." maxlength="16">
+        <button class="btn b-ol b-sm cutxs" onclick="saveUsername()">SAVE</button>
+      </div>
+      <div class="cl">Callsign (Auto)</div>
       <div class="id-row">
         <span class="id-v" id="mId">------</span>
         <button class="btn b-gh b-sm cutxs" onclick="cpId()">COPY</button>
@@ -340,6 +361,10 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
   </div>
   <div class="ch-bd" id="cBody"></div>
   <div class="ch-bar">
+    <button class="ab" id="attBtn" onclick="document.getElementById('fileInput').click()" aria-label="Attach">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+    </button>
+    <input type="file" id="fileInput" accept="image/*,video/*" style="display:none">
     <input type="text" class="ch-inp" id="mIn" placeholder="Type a message..." disabled autocomplete="off">
     <button class="sb cutxs" id="sBtn" onclick="sendMsg()" disabled aria-label="Send">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -358,6 +383,14 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
     </button>
   </div>
   <div class="sdr-b">
+    <div class="ss">
+      <div class="ssl">Username</div>
+      <div class="id-row" style="margin-bottom: 10px;">
+        <input type="text" class="uname-inp cutxs" id="unameInpSet" placeholder="Set username..." maxlength="16">
+        <button class="btn b-ol b-sm cutxs" onclick="saveUsername()">SAVE</button>
+      </div>
+    </div>
+    <div class="sdv"></div>
     <div class="ss">
       <div class="ssl">Your Callsign</div>
       <div class="id-row">
@@ -416,7 +449,9 @@ var peer=null,conn=null,localStream=null,activeCall=null,incomingCall=null;
 var friendId=null,isMuted=false,voiceOn=false,callSec=0,callInt=null;
 var isManualConnecting=false;
 var manualConnTimeout=null;
+var retryInterval=null;
 var BASE='https://direct-drop-p2p.vercel.app';
+var audioCtx = null;
 
 var $mId=document.getElementById('mId'),$hS=document.getElementById('hS'),$hD=document.getElementById('hD');
 var $idEr=document.getElementById('idEr'),$fIn=document.getElementById('fIn'),$cBtn=document.getElementById('cBtn');
@@ -430,21 +465,69 @@ var $sId=document.getElementById('sId'),$sCnSec=document.getElementById('sCnSec'
 var $cOv=document.getElementById('cOv'),$coId=document.getElementById('coId'),$rAud=document.getElementById('rAud');
 var $tst=document.getElementById('tst');
 var $recSec=document.getElementById('recSec'),$recList=document.getElementById('recList');
+var $unameInpSetup=document.getElementById('unameInpSetup'),$unameInpSet=document.getElementById('unameInpSet');
+var $fileInput=document.getElementById('fileInput');
 
  $mIn.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}});
  $fIn.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();manConn()}});
+ $fileInput.addEventListener('change', handleFileSelect);
+ window.addEventListener('focus', function() { document.title = 'DIRECT DROP P2P'; });
 
-function genId(){
-  var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';
-  function p(){var r='';for(var i=0;i<3;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
-  return p()+'-'+p()+'-'+p();
+// --- Username Logic ---
+function getMyUsername() {
+  return localStorage.getItem('dd-p2p-username') || 'Anonymous';
 }
-function getLocked(){
-  var s=localStorage.getItem('wz-p2p-id');
-  if(s)return s;
-  var n=genId();localStorage.setItem('wz-p2p-id',n);return n;
+function saveUsername() {
+  var val = ($unameInpSetup.value || $unameInpSet.value).trim();
+  if(val) {
+    localStorage.setItem('dd-p2p-username', val);
+    $unameInpSetup.value = val;
+    $unameInpSet.value = val;
+    toast('Username saved');
+    // If connected, notify peer of name change
+    if (conn && conn.open) {
+      conn.send({ t: 'profile', username: val });
+    }
+  }
 }
-function rstId(){localStorage.removeItem('wz-p2p-id');location.reload()}
+function loadUsernameFields() {
+  var u = getMyUsername();
+  if(u !== 'Anonymous') {
+    $unameInpSetup.value = u;
+    $unameInpSet.value = u;
+  }
+}
+function getPeerName(id) {
+  var names = JSON.parse(localStorage.getItem('dd-p2p-names') || '{}');
+  return names[id] || id;
+}
+function savePeerName(id, name) {
+  if(!id || !name) return;
+  var names = JSON.parse(localStorage.getItem('dd-p2p-names') || '{}');
+  names[id] = name;
+  localStorage.setItem('dd-p2p-names', JSON.stringify(names));
+}
+
+// --- Notifications ---
+function playPing() {
+  try {
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var o = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.value = 880; o.type = 'sine';
+    g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + 0.2);
+  } catch(e){}
+}
+function notifyUser() {
+  if (!document.hasFocus() || document.hidden) {
+    try { navigator.vibrate(200); } catch(e){}
+    playPing();
+    document.title = '(1) DIRECT DROP P2P';
+  }
+}
 
 // --- Chat History Storage ---
 function getChatHistory(id) {
@@ -452,12 +535,24 @@ function getChatHistory(id) {
   try { return JSON.parse(localStorage.getItem('dd-p2p-chat-'+id) || '[]'); }
   catch(e) { return []; }
 }
-function saveChatMsg(id, type, text, ts) {
+function saveChatMsg(id, msgObj) {
   if(!id) return;
   var hist = getChatHistory(id);
-  hist.push({t: type, txt: text, ts: ts || Date.now()});
+  hist.push(msgObj);
   if(hist.length > 200) hist = hist.slice(hist.length - 200); 
   localStorage.setItem('dd-p2p-chat-'+id, JSON.stringify(hist));
+}
+function updateChatMsgStatus(id, ts, newStatus) {
+  if(!id) return;
+  var hist = getChatHistory(id);
+  var changed = false;
+  hist.forEach(function(m) {
+    if(m.ts === ts && m.status === 'pending') {
+      m.status = newStatus;
+      changed = true;
+    }
+  });
+  if(changed) localStorage.setItem('dd-p2p-chat-'+id, JSON.stringify(hist));
 }
 function clearChatHistory(id) {
   if(id) localStorage.removeItem('dd-p2p-chat-'+id);
@@ -489,7 +584,8 @@ function renderRecents() {
     var div = document.createElement('div');
     div.className = 'rec-item cutxs off';
     div.setAttribute('data-id', id);
-    div.innerHTML = '<div class="rec-dot"></div><span class="rec-id">'+id+'</span>';
+    var displayName = getPeerName(id);
+    div.innerHTML = '<div class="rec-dot"></div><span class="rec-id">'+displayName+'</span>';
     div.onclick = function() {
       var rid = this.getAttribute('data-id');
       openChatWithPeer(rid);
@@ -499,7 +595,6 @@ function renderRecents() {
 
   setTimeout(function() {
     recents.forEach(function(id) {
-      // Don't ping if we are already connected to them
       if (conn && conn.open && conn.peer === id) {
         updatePeerStatusUI(id, true);
       } else {
@@ -554,34 +649,61 @@ function updatePeerStatusUI(id, isOnline) {
 }
 
 // --- Message Rendering ---
-function appendMsgToDOM(t, txt, ts) {
+function appendMsgToDOM(msg) {
   var d=document.createElement('div'),b=document.createElement('div'),tm=document.createElement('div');
   tm.className='mt';
-  var now = ts ? new Date(ts) : new Date();
+  var now = msg.ts ? new Date(msg.ts) : new Date();
   var h=now.getHours(),m=now.getMinutes();
-  tm.textContent=(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
-  if(t==='sys'){d.className='mg mg-s';b.className='mb';b.textContent=txt}
-  else if(t==='you'){d.className='mg mg-y';b.className='mb';b.textContent=txt}
-  else{d.className='mg mg-p';b.className='mb';b.textContent=txt}
+  var timeStr = (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+  
+  var tick = '';
+  if(msg.t === 'you') {
+    if(msg.status === 'pending') tick = ' <span class="tick">⏳</span>';
+    else if(msg.status === 'sent') tick = ' <span class="tick">✓</span>';
+  }
+
+  tm.innerHTML = timeStr + tick;
+  
+  if(msg.t==='sys'){d.className='mg mg-s';b.className='mb';b.textContent=msg.txt}
+  else if(msg.t==='you'){d.className='mg mg-y';b.className='mb';}
+  else{d.className='mg mg-p';b.className='mb';}
+  
+  if(msg.kind === 'media') {
+    if(msg.media.type.startsWith('image/')) {
+      var img = document.createElement('img');
+      img.src = msg.media.data;
+      b.appendChild(img);
+      if(msg.txt) { var p = document.createElement('span'); p.textContent = msg.txt; b.appendChild(p); }
+    } else if(msg.media.type.startsWith('video/')) {
+      var vid = document.createElement('video');
+      vid.src = msg.media.data; vid.controls = true;
+      b.appendChild(vid);
+      if(msg.txt) { var p = document.createElement('span'); p.textContent = msg.txt; b.appendChild(p); }
+    }
+  } else {
+    b.textContent = msg.txt;
+  }
+  
   d.appendChild(b);d.appendChild(tm);$cBody.appendChild(d);$cBody.scrollTop=$cBody.scrollHeight;
 }
 
-function addMsg(t, txt) {
-  var ts = Date.now();
+function addMsg(t, txt, kind, media, status) {
+  var ts = Date.now() + Math.random(); // Ensure unique ts for status updates
+  var msg = { t: t, kind: kind || 'text', txt: txt, media: media, ts: ts, status: status || '' };
   if (friendId && t !== 'sys') { 
-    saveChatMsg(friendId, t, txt, ts);
+    saveChatMsg(friendId, msg);
   }
-  appendMsgToDOM(t, txt, ts);
+  appendMsgToDOM(msg);
 }
 
 function loadChatHistory(id) {
   $cBody.innerHTML = '';
   var hist = getChatHistory(id);
   if (hist.length === 0) {
-    appendMsgToDOM('sys', 'No messages yet. Say hi!');
+    appendMsgToDOM({t:'sys', txt:'No messages yet. Say hi!', ts:Date.now()});
   } else {
     hist.forEach(function(msg) {
-      appendMsgToDOM(msg.t, msg.txt, msg.ts);
+      appendMsgToDOM(msg);
     });
   }
 }
@@ -593,22 +715,21 @@ function openChatWithPeer(id) {
     return;
   }
 
-  // Clear any pending manual connection timeout
   if (manualConnTimeout) clearTimeout(manualConnTimeout);
+  if (retryInterval) clearInterval(retryInterval);
 
-  // If already connected to this peer, just open the chat
   if (conn && conn.open && conn.peer === id) {
     friendId = id;
     loadChatHistory(id);
-    $cPeer.textContent = friendId;
+    $cPeer.textContent = getPeerName(id);
     $mIn.disabled = false; $sBtn.disabled = false; $callBtn.disabled = false;
+    $attBtn.disabled = false;
     $cSub.textContent = 'Online';
     $cSub.className = 'ch-ps lv';
     switchToChat();
     return;
   }
 
-  // If connected to a DIFFERENT peer, close the old one first
   if (conn) {
     try { conn.close(); } catch(e) {}
     conn = null;
@@ -616,28 +737,44 @@ function openChatWithPeer(id) {
 
   friendId = id;
   loadChatHistory(id); 
-  $cPeer.textContent = friendId;
+  $cPeer.textContent = getPeerName(id);
   
-  // Setup UI for "Connecting..."
   $cSub.textContent = 'Connecting...';
   $cSub.className = 'ch-ps';
-  $mIn.disabled = true; $sBtn.disabled = true; $callBtn.disabled = true;
+  // Allow typing immediately for offline outbox
+  $mIn.disabled = false; $sBtn.disabled = false; $attBtn.disabled = false; 
+  $callBtn.disabled = true;
+  $mIn.placeholder = "Type a message...";
   switchToChat();
   
-  // Attempt connection in background
+  attemptConnection(id);
+  
+  // Start retry loop for local outbox
+  retryInterval = setInterval(function() {
+    if (!conn || !conn.open) {
+      if ($sChat.classList.contains('on') && friendId === id) {
+        attemptConnection(id);
+      }
+    } else {
+      clearInterval(retryInterval);
+    }
+  }, 15000);
+}
+
+function attemptConnection(id) {
+  if (!peer || peer.destroyed) return;
   setHdr('LINKING','lk');
   isManualConnecting = true;
   try {
     conn = peer.connect(id, {reliable:true});
     wireChat();
     
-    // Fallback timeout: if connection doesn't open in 6 seconds, mark as offline
     manualConnTimeout = setTimeout(function() {
       if (isManualConnecting && (!conn || !conn.open)) {
         if (friendId === id) { 
-          $cSub.textContent = 'Offline';
+          $cSub.textContent = 'Offline (Outbox Active)';
           $cSub.className = 'ch-ps';
-          $mIn.disabled = true; $sBtn.disabled = true; $callBtn.disabled = true;
+          $callBtn.disabled = true;
           isManualConnecting = false;
           if (conn) { try { conn.close(); } catch(e){} conn = null; }
           setHdr('ONLINE','on');
@@ -646,7 +783,6 @@ function openChatWithPeer(id) {
     }, 6000);
 
   } catch(e) {
-    console.error("Connect error", e);
     handleManualConnError(id);
   }
 }
@@ -654,9 +790,9 @@ function openChatWithPeer(id) {
 function handleManualConnError(id) {
   if (manualConnTimeout) clearTimeout(manualConnTimeout);
   if (friendId === id) {
-    $cSub.textContent = 'Offline';
+    $cSub.textContent = 'Offline (Outbox Active)';
     $cSub.className = 'ch-ps';
-    $mIn.disabled = true; $sBtn.disabled = true; $callBtn.disabled = true;
+    $callBtn.disabled = true;
     isManualConnecting = false;
     if (conn) { try { conn.close(); } catch(e){} conn = null; }
     setHdr('ONLINE','on');
@@ -694,7 +830,6 @@ function shrQR(){
 }
 
 function setHdr(t,c){$hS.textContent=t;$hS.className='hdr-s '+c;$hD.className='dt '+c}
-
 function toast(m){$tst.textContent=m;$tst.classList.add('show');setTimeout(function(){$tst.classList.remove('show')},1800)}
 
 function switchToChat(){
@@ -703,6 +838,7 @@ function switchToChat(){
 }
 function goBack(){
   if(voiceOn)endCall();
+  if (retryInterval) clearInterval(retryInterval);
   $sChat.classList.remove('on');$sSetup.classList.add('on');
   renderRecents(); 
 }
@@ -767,42 +903,38 @@ function initPeer(){
     conn=dc;
     friendId=dc.peer;
     loadChatHistory(friendId);
-    $cPeer.textContent=friendId;
+    $cPeer.textContent = getPeerName(friendId);
     $cSub.textContent='Online';
     $cSub.className='ch-ps lv';
-    $mIn.disabled=false;$sBtn.disabled=false;$callBtn.disabled=false;
+    $mIn.disabled=false;$sBtn.disabled=false;$callBtn.disabled=false;$attBtn.disabled=false;
     switchToChat();
     wireChat();
   });
 
   peer.on('call',function(call){
-    // If we are not connected via data channel, load history for incoming call
     if (!conn || !conn.open || conn.peer !== call.peer) {
       if (conn) { try { conn.close(); } catch(e){} conn = null; }
       friendId = call.peer;
       loadChatHistory(friendId);
-      $cPeer.textContent = friendId;
+      $cPeer.textContent = getPeerName(friendId);
       switchToChat();
     }
     
-    incomingCall=call;$coId.textContent=call.peer;
+    incomingCall=call;$coId.textContent=getPeerName(call.peer);
     $cOv.classList.add('show');setCallUI('incoming');
   });
 
   peer.on('error',function(err){
     console.error('PeerJS:',err.type,err);
     if(err.type==='unavailable-id'){
-      setHdr('CONFLICT','er');
-      $idEr.classList.add('show');
+      setHdr('CONFLICT','er');$idEr.classList.add('show');
       toast('Callsign conflict. Regenerating...');
       localStorage.removeItem('wz-p2p-id');
       setTimeout(function(){ location.reload(); }, 2000);
     }
     else if(err.type==='peer-unavailable'){
-      // Parse peer ID from error message to ensure we only handle errors for the active connection
       var match = err.message.match(/peer ([A-Z0-9-]+)/i);
       var errPeerId = match ? match[1].toUpperCase() : null;
-
       if (isManualConnecting && errPeerId === friendId) {
         handleManualConnError(friendId);
       }
@@ -824,15 +956,40 @@ function manConn(){
   $fIn.value=''; 
 }
 
+function flushOutbox() {
+  if (!conn || !conn.open) return;
+  var hist = getChatHistory(friendId);
+  var changed = false;
+  hist.forEach(function(msg) {
+    if(msg.t === 'you' && msg.status === 'pending') {
+      var payload = { t: 'msg', kind: msg.kind || 'text', txt: msg.txt, media: msg.media, ts: msg.ts };
+      conn.send(payload);
+      msg.status = 'sent';
+      changed = true;
+    }
+  });
+  if(changed) {
+    localStorage.setItem('dd-p2p-chat-'+friendId, JSON.stringify(hist));
+    loadChatHistory(friendId); 
+  }
+}
+
 function handleConnOpen(){
   if (manualConnTimeout) clearTimeout(manualConnTimeout);
+  if (retryInterval) clearInterval(retryInterval);
   setHdr('LINKED','lk');
-  $cPeer.textContent=friendId;
-  $mIn.disabled=false;$sBtn.disabled=false;$callBtn.disabled=false;
+  $cPeer.textContent = getPeerName(friendId);
+  $mIn.disabled=false;$sBtn.disabled=false;$callBtn.disabled=false;$attBtn.disabled=false;
   $cSub.textContent='Online';
   $cSub.className='ch-ps lv';
   isManualConnecting = false;
   addRecent(friendId);
+  
+  // Send profile
+  conn.send({ t: 'profile', username: getMyUsername() });
+  
+  // Flush pending messages
+  flushOutbox();
 }
 
 function wireChat(){
@@ -841,11 +998,28 @@ function wireChat(){
 
   conn.on('data',function(d){
     if(d&&typeof d==='object'){
-      if(d.t==='voice_end'){handleEnd();return}
-      if(d.t==='typing'){return}
+      if(d.t==='profile') {
+        savePeerName(conn.peer, d.username);
+        $cPeer.textContent = d.username;
+        renderRecents();
+      }
+      else if(d.t==='voice_end'){handleEnd();return}
+      else if(d.t==='typing'){return}
+      else if(d.t==='msg') {
+        var msg = { t: 'peer', kind: d.kind || 'text', txt: d.txt, media: d.media, ts: d.ts, status: '' };
+        saveChatMsg(friendId, msg);
+        appendMsgToDOM(msg);
+        notifyUser();
+      }
       return;
     }
-    if(typeof d==='string')addMsg('peer',d);
+    // Legacy text string support
+    if(typeof d==='string') {
+      var msg = { t: 'peer', kind: 'text', txt: d, ts: Date.now(), status: '' };
+      saveChatMsg(friendId, msg);
+      appendMsgToDOM(msg);
+      notifyUser();
+    }
   });
   
   conn.on('close',function(){
@@ -853,7 +1027,7 @@ function wireChat(){
       if (manualConnTimeout) clearTimeout(manualConnTimeout);
       $cSub.textContent='Offline';
       $cSub.className='ch-ps';
-      $mIn.disabled=true;$sBtn.disabled=true;$callBtn.disabled=true;
+      $callBtn.disabled=true;
       setCallUI('idle');
       conn=null;
       setHdr('ONLINE','on');
@@ -865,7 +1039,7 @@ function wireChat(){
       if (manualConnTimeout) clearTimeout(manualConnTimeout);
       $cSub.textContent='Offline';
       $cSub.className='ch-ps';
-      $mIn.disabled=true;$sBtn.disabled=true;$callBtn.disabled=true;
+      $callBtn.disabled=true;
       setCallUI('idle');
       conn=null;
       setHdr('ONLINE','on');
@@ -892,8 +1066,58 @@ function clrChat(){
 }
 
 function sendMsg(){
-  var t=$mIn.value.trim();if(!t||!conn||!conn.open)return;
-  conn.send(t);addMsg('you',t);$mIn.value='';$mIn.focus();
+  var t=$mIn.value.trim();
+  if(!t)return;
+  
+  var ts = Date.now() + Math.random();
+  var msg = { t: 'you', kind: 'text', txt: t, ts: ts, status: 'pending' };
+  
+  if (conn && conn.open) {
+    conn.send({ t: 'msg', kind: 'text', txt: t, ts: ts });
+    msg.status = 'sent';
+  } else {
+    toast('Offline: Message queued');
+  }
+  
+  saveChatMsg(friendId, msg);
+  appendMsgToDOM(msg);
+  $mIn.value='';$mIn.focus();
+}
+
+function handleFileSelect(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  
+  if (file.size > 10 * 1024 * 1024) {
+    toast('File too large (Max 10MB)');
+    e.target.value = '';
+    return;
+  }
+
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var ts = Date.now() + Math.random();
+    var msg = { 
+      t: 'you', 
+      kind: 'media', 
+      txt: '', 
+      media: { name: file.name, type: file.type, data: ev.target.result }, 
+      ts: ts, 
+      status: 'pending' 
+    };
+
+    if (conn && conn.open) {
+      conn.send({ t: 'msg', kind: 'media', txt: '', media: msg.media, ts: ts });
+      msg.status = 'sent';
+    } else {
+      toast('Offline: Media queued');
+    }
+
+    saveChatMsg(friendId, msg);
+    appendMsgToDOM(msg);
+  };
+  reader.readAsDataURL(file);
+  e.target.value = ''; // reset input
 }
 
 function getMic(){
@@ -958,6 +1182,8 @@ function togMute(){
   $muBtn.textContent=isMuted?'UNMUTE':'MUTE';
 }
 
+// Init
+loadUsernameFields();
 initPeer();
 </script>
 </body>
