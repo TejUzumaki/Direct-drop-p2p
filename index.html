@@ -98,6 +98,38 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .inp:focus{border-color:#3A3A3C}
 .inp::placeholder{color:var(--tx3);font-family:var(--sans);letter-spacing:0;font-size:12px}
 .inp:disabled{opacity:.3}
+
+/* Recent Connections List Styles */
+.rec-list {
+  max-height: 180px;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.rec-list::-webkit-scrollbar{width:2px}
+.rec-list::-webkit-scrollbar-thumb{background:var(--bd)}
+.rec-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; margin-bottom:8px; background:var(--s2);
+  border:1px solid var(--bd2); cursor:pointer; 
+  transition: background .15s, opacity .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.rec-item:last-child{margin-bottom:0}
+.rec-item:active{background:var(--s3)}
+.rec-item.off{opacity:.4}
+.rec-dot {
+  width:8px; height:8px; border-radius:50%; background:var(--tx3);
+  flex-shrink:0; transition: background .2s;
+}
+.rec-item.on .rec-dot{background:var(--olive); box-shadow:0 0 6px rgba(79,107,58,0.6)}
+.rec-id {
+  font-family:var(--mono); font-size:13px; font-weight:600; letter-spacing:1px;
+  color:var(--tx2); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.rec-item.on .rec-id{color:var(--wh)}
+.rec-empty{font-size:11px;color:var(--tx3);font-style:italic;padding:4px 0}
+
 .ch-hdr{
   display:flex;align-items:center;gap:10px;
   padding:10px 16px;flex-shrink:0;border-bottom:1px solid var(--bd2);background:var(--bg);
@@ -277,6 +309,13 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
         <button class="btn b-wh cuts" id="cBtn" onclick="manConn()" disabled>LINK</button>
       </div>
     </div>
+    
+    <!-- New Recent Connections List -->
+    <div class="cd cut" id="recSec" style="display:none">
+      <div class="cl">Recent Connections</div>
+      <div class="rec-list" id="recList"></div>
+    </div>
+    
   </div>
 </div>
 
@@ -379,6 +418,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 <script>
 var peer=null,conn=null,localStream=null,activeCall=null,incomingCall=null;
 var friendId=null,isMuted=false,voiceOn=false,callSec=0,callInt=null;
+var isManualConnecting=false; // Used to differentiate ping errors from actual connection errors
 var BASE='https://direct-drop-p2p.vercel.app';
 
 var $mId=document.getElementById('mId'),$hS=document.getElementById('hS'),$hD=document.getElementById('hD');
@@ -392,6 +432,7 @@ var $sBg=document.getElementById('sBg'),$sDr=document.getElementById('sDr');
 var $sId=document.getElementById('sId'),$sCnSec=document.getElementById('sCnSec');
 var $cOv=document.getElementById('cOv'),$coId=document.getElementById('coId'),$rAud=document.getElementById('rAud');
 var $tst=document.getElementById('tst');
+var $recSec=document.getElementById('recSec'),$recList=document.getElementById('recList');
 
  $mIn.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}});
  $fIn.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();manConn()}});
@@ -407,6 +448,95 @@ function getLocked(){
   var n=genId();localStorage.setItem('wz-p2p-id',n);return n;
 }
 function rstId(){localStorage.removeItem('wz-p2p-id');location.reload()}
+
+// --- Recent Connections Logic ---
+function getRecents() {
+  var s = localStorage.getItem('dd-p2p-recent');
+  return s ? JSON.parse(s) : [];
+}
+function addRecent(id) {
+  if(!id) return;
+  var recents = getRecents();
+  recents = recents.filter(function(r){ return r !== id; }); // Remove if already exists
+  recents.unshift(id); // Add to top
+  if (recents.length > 15) recents = recents.slice(0, 15); // Limit to 15
+  localStorage.setItem('dd-p2p-recent', JSON.stringify(recents));
+}
+function renderRecents() {
+  var recents = getRecents();
+  if (recents.length === 0) {
+    $recSec.style.display = 'none';
+    return;
+  }
+  $recSec.style.display = 'block';
+  $recList.innerHTML = '';
+  
+  recents.forEach(function(id) {
+    var div = document.createElement('div');
+    div.className = 'rec-item cutxs off'; // Start as offline/dim
+    div.setAttribute('data-id', id);
+    div.innerHTML = '<div class="rec-dot"></div><span class="rec-id">'+id+'</span>';
+    div.onclick = function() {
+      var rid = this.getAttribute('data-id');
+      $fIn.value = rid;
+      manConn();
+    };
+    $recList.appendChild(div);
+  });
+
+  // Check presence for all recents
+  setTimeout(function() {
+    recents.forEach(function(id) {
+      checkPeerPresence(id);
+    });
+  }, 500);
+}
+function checkPeerPresence(peerId) {
+  if (!peer || peer.destroyed) return;
+  var status = 'checking';
+  
+  try {
+    var p = peer.connect(peerId, { metadata: { ping: true }, reliable: false });
+    var timeout = setTimeout(function() {
+      if (status === 'checking') {
+        status = 'offline';
+        updatePeerStatusUI(peerId, false);
+      }
+      try { p.close(); } catch(e){}
+    }, 4000);
+
+    p.on('open', function() {
+      if (status === 'checking') {
+        status = 'online';
+        updatePeerStatusUI(peerId, true);
+        clearTimeout(timeout);
+      }
+      try { p.close(); } catch(e){}
+    });
+    p.on('error', function() {
+      if (status === 'checking') {
+        status = 'offline';
+        updatePeerStatusUI(peerId, false);
+        clearTimeout(timeout);
+      }
+    });
+  } catch(e) {
+    updatePeerStatusUI(peerId, false);
+  }
+}
+function updatePeerStatusUI(id, isOnline) {
+  var item = document.querySelector('.rec-item[data-id="'+id+'"]');
+  if (item) {
+    if (isOnline) {
+      item.classList.remove('off');
+      item.classList.add('on');
+    } else {
+      item.classList.add('off');
+      item.classList.remove('on');
+    }
+  }
+}
+// --- End Recent Connections Logic ---
 
 function drawQR(canvas,size){
   var myId=getLocked(),url=BASE+'/?connect='+encodeURIComponent(myId);
@@ -460,6 +590,8 @@ function switchToChat(){
 function goBack(){
   if(voiceOn)endCall();
   $sChat.classList.remove('on');$sSetup.classList.add('on');
+  // Re-check recent peers when returning to setup
+  renderRecents(); 
 }
 function openSet(){$sBg.classList.add('op');$sDr.classList.add('op')}
 function closeSet(){$sBg.classList.remove('op');$sDr.classList.remove('op')}
@@ -506,11 +638,17 @@ function initPeer(){
 
   peer.on('open',function(id){
     setHdr('ONLINE','on');$cBtn.disabled=false;$idEr.classList.remove('show');
+    renderRecents(); // Load recent connections list
     var p=new URLSearchParams(window.location.search),t=p.get('connect');
     if(t&&t.trim()!==id){$fIn.value=t.trim();manConn();window.history.replaceState({},'',window.location.pathname)}
   });
 
   peer.on('connection',function(dc){
+    // Ignore ping connections instantly so it doesn't break active sessions
+    if (dc.metadata && dc.metadata.ping) {
+      dc.on('open', function() { try { dc.close(); } catch(e){} });
+      return;
+    }
     if(conn&&conn.open){dc.on('open',function(){dc.close()});return}
     conn=dc;friendId=dc.peer;wireChat();
   });
@@ -523,7 +661,12 @@ function initPeer(){
   peer.on('error',function(err){
     console.error('PeerJS:',err.type,err);
     if(err.type==='unavailable-id'){setHdr('CONFLICT','er');$idEr.classList.add('show')}
-    else if(err.type==='peer-unavailable'){addMsg('sys','Peer not found. Check callsign.');setHdr('ONLINE','on');$fIn.disabled=false;$cBtn.disabled=false}
+    else if(err.type==='peer-unavailable'){
+      // If we aren't manually connecting, it's just a ping failure checking presence
+      if (!isManualConnecting) return; 
+      addMsg('sys','Peer not found. Check callsign.');setHdr('ONLINE','on');$fIn.disabled=false;$cBtn.disabled=false;
+      isManualConnecting = false;
+    }
     else{setHdr('ERROR','er');addMsg('sys','Error: '+err.type)}
   });
 
@@ -534,6 +677,7 @@ function manConn(){
   var t=$fIn.value.trim().toUpperCase();
   if(!t)return;if(t===$mId.textContent){addMsg('sys','Cannot link to yourself.');return}
   setHdr('LINKING','lk');$fIn.disabled=true;$cBtn.disabled=true;
+  isManualConnecting = true; // Mark true so global error knows it's a real connection attempt
   conn=peer.connect(t,{reliable:true});friendId=t;wireChat();
 }
 
@@ -542,6 +686,8 @@ function wireChat(){
     setHdr('LINKED','lk');$cPeer.textContent=friendId;
     $mIn.disabled=false;$sBtn.disabled=false;$callBtn.disabled=false;
     addMsg('sys','Linked with '+friendId);switchToChat();setCallUI('idle');
+    isManualConnecting = false; // Connection succeeded
+    addRecent(friendId); // Save to recent list
   });
   conn.on('data',function(d){
     if(d&&typeof d==='object'){
@@ -560,6 +706,8 @@ function cleanConn(){
   $sChat.classList.remove('on');$sSetup.classList.add('on');
   $fIn.disabled=false;$cBtn.disabled=false;$sCnSec.style.display='none';
   friendId=null;conn=null;if(voiceOn)handleEnd();setCallUI('idle');
+  isManualConnecting = false;
+  renderRecents(); // Recheck statuses when returning to setup
 }
 
 function disconn(){if(conn)try{conn.close()}catch(e){}cleanConn();addMsg('sys','Disconnected.')}
