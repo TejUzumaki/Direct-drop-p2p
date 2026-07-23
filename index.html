@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>WARZONE P2P</title>
+<title>DIRECT DROP P2P</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
@@ -234,7 +234,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 <div class="app">
 
 <header class="hdr">
-  <span class="hdr-t">WARZONE P2P</span>
+  <span class="hdr-t">DIRECT DROP P2P</span>
   <div class="hdr-r">
     <button class="ib" onclick="openSet()" aria-label="Menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
@@ -379,7 +379,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 <script>
 var peer=null,conn=null,localStream=null,activeCall=null,incomingCall=null;
 var friendId=null,isMuted=false,voiceOn=false,callSec=0,callInt=null;
-var BASE='https://warzone-p2p-test.vercel.app';
+var BASE='https://direct-drop-p2p.vercel.app';
 
 var $mId=document.getElementById('mId'),$hS=document.getElementById('hS'),$hD=document.getElementById('hD');
 var $idEr=document.getElementById('idEr'),$fIn=document.getElementById('fIn'),$cBtn=document.getElementById('cBtn');
@@ -427,10 +427,10 @@ function shrQR(){
     var bigCanvas=document.createElement('canvas');
     drawQR(bigCanvas,400);
     bigCanvas.toBlob(function(blob){
-      if(navigator.canShare&&navigator.canShare({files:[new File([blob],'warzone-qr.png',{type:'image/png'})]})){
-        navigator.share({title:'WARZONE P2P Link',text:'Connect to me: '+myId,url:url,files:[new File([blob],'warzone-qr.png',{type:'image/png'})]}).catch(function(){});
+      if(navigator.canShare&&navigator.canShare({files:[new File([blob],'directdrop-qr.png',{type:'image/png'})]})){
+        navigator.share({title:'DIRECT DROP P2P Link',text:'Connect to me: '+myId,url:url,files:[new File([blob],'directdrop-qr.png',{type:'image/png'})]}).catch(function(){});
       }else{
-        navigator.share({title:'WARZONE P2P Link',text:'Connect to me: '+myId,url:url}).catch(function(){});
+        navigator.share({title:'DIRECT DROP P2P Link',text:'Connect to me: '+myId,url:url}).catch(function(){});
       }
     },'image/png');
   }else{
