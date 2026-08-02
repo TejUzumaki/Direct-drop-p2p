@@ -16,26 +16,26 @@ jobs:
         with:
           node-version: 20
           
-      - name: Setup Java 21
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: 'platform-tools build-tools;34.0.0 platforms;android-34'
-          
-      - name: Accept Android Licenses
-        run: yes | sdkmanager --licenses || true
         
-      - name: Install Capacitor & Create Config
+      - name: Accept Android Licenses
+        run: |
+          mkdir -p ~/.android && touch ~/.android/repositories.cfg
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+        
+      - name: Install Capacitor v6 (Stable)
         run: |
           mkdir -p www
           echo "<html><body>Loading DirectDrop...</body></html>" > www/index.html
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
           npx cap init DirectDrop com.tejuzumaki.directdrop --web-dir www
           cat << 'JSON' > capacitor.config.json
           {
