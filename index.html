@@ -348,33 +348,33 @@ var isTyping=false,peerTyping=false,typingTimeout=null,peerTypingTimeout=null;
 var incomingFile=null,reconnectAttempts=0,audioCtx=null;
 var BASE='https://directdropxtej.vercel.app';
 
-var mId=document.getElementById('mId'),hS=document.getElementById('hS'),hD=document.getElementById('hD');
-var idEr=document.getElementById('idEr'),fIn=document.getElementById('fIn'),cBtn=document.getElementById('cBtn');
-var sSetup=document.getElementById('sSetup'),sChat=document.getElementById('sChat');
-var cPeer=document.getElementById('cPeer'),cSub=document.getElementById('cSub');
-var callBtn=document.getElementById('callBtn'),cBar=document.getElementById('cBar');
-var cTm=document.getElementById('cTm'),muBtn=document.getElementById('muBtn');
-var cBody=document.getElementById('cBody'),mIn=document.getElementById('mIn'),sBtn=document.getElementById('sBtn');
-var sBg=document.getElementById('sBg'),sDr=document.getElementById('sDr');
-var sId=document.getElementById('sId'),sCnSec=document.getElementById('sCnSec');
-var cOv=document.getElementById('cOv'),coId=document.getElementById('coId'),rAud=document.getElementById('rAud');
-var tst=document.getElementById('tst'),fileInput=document.getElementById('fileInput'),fBtn=document.getElementById('fBtn');
-var recSec=document.getElementById('recSec'),recList=document.getElementById('recList');
-var unameInpSetup=document.getElementById('unameInpSetup'),unameInpSet=document.getElementById('unameInpSet');
+var $mId=document.getElementById('mId'),$hS=document.getElementById('hS'),$hD=document.getElementById('hD');
+var $idEr=document.getElementById('idEr'),$fIn=document.getElementById('fIn'),$cBtn=document.getElementById('cBtn');
+var $sSetup=document.getElementById('sSetup'),$sChat=document.getElementById('sChat');
+var $cPeer=document.getElementById('cPeer'),$cSub=document.getElementById('cSub');
+var $callBtn=document.getElementById('callBtn'),$cBar=document.getElementById('cBar');
+var $cTm=document.getElementById('cTm'),$muBtn=document.getElementById('muBtn');
+var $cBody=document.getElementById('cBody'),$mIn=document.getElementById('mIn'),$sBtn=document.getElementById('sBtn');
+var $sBg=document.getElementById('sBg'),$sDr=document.getElementById('sDr');
+var $sId=document.getElementById('sId'),$sCnSec=document.getElementById('sCnSec');
+var $cOv=document.getElementById('cOv'),$coId=document.getElementById('coId'),$rAud=document.getElementById('rAud');
+var $tst=document.getElementById('tst'),$fileInput=document.getElementById('fileInput'),$fBtn=document.getElementById('fBtn');
+var $recSec=document.getElementById('recSec'),$recList=document.getElementById('recList');
+var $unameInpSetup=document.getElementById('unameInpSetup'),$unameInpSet=document.getElementById('unameInpSet');
 
-mIn.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}handleTyping()});
-mIn.addEventListener('paste', handlePaste);
-fIn.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();manConn()}});
-fileInput.addEventListener('change',handleFileSelect);
+ $mIn.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}handleTyping()});
+ $mIn.addEventListener('paste', handlePaste);
+ $fIn.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();manConn()}});
+ $fileInput.addEventListener('change',handleFileSelect);
 window.addEventListener('focus', function() { document.title = 'DIRECTDROP'; });
 
 // --- Identity & Profile ---
 function getMyUsername(){return localStorage.getItem('dd-p2p-username')||'Anonymous'}
 function saveUsername(){
-  var val=(unameInpSetup.value||unameInpSet.value).trim();
-  if(val){localStorage.setItem('dd-p2p-username',val);unameInpSetup.value=val;unameInpSet.value=val;toast('Username saved');if(conn&&conn.open)conn.send({t:'profile',username:val})}
+  var val=($unameInpSetup.value||$unameInpSet.value).trim();
+  if(val){localStorage.setItem('dd-p2p-username',val);$unameInpSetup.value=val;$unameInpSet.value=val;toast('Username saved');if(conn&&conn.open)conn.send({t:'profile',username:val})}
 }
-function loadUsernameFields(){var u=getMyUsername();if(u!=='Anonymous'){unameInpSetup.value=u;unameInpSet.value=u}}
+function loadUsernameFields(){var u=getMyUsername();if(u!=='Anonymous'){$unameInpSetup.value=u;$unameInpSet.value=u}}
 function getPeerName(id){var names=JSON.parse(localStorage.getItem('dd-p2p-names')||'{}');return names[id]||id}
 function savePeerName(id,name){if(!id||!name)return;var names=JSON.parse(localStorage.getItem('dd-p2p-names')||'{}');names[id]=name;localStorage.setItem('dd-p2p-names',JSON.stringify(names))}
 
@@ -386,20 +386,20 @@ function notifyUser(){if(!document.hasFocus()||document.hidden){try{navigator.vi
 function getChatHistory(id){if(!id)return[];try{return JSON.parse(localStorage.getItem('dd-p2p-chat-'+id)||'[]')}catch(e){return[]}}
 function saveChatMsg(id,msgObj){if(!id||msgObj.kind==='media')return;var hist=getChatHistory(id);hist.push(msgObj);if(hist.length>200)hist=hist.slice(hist.length-200);try{localStorage.setItem('dd-p2p-chat-'+id,JSON.stringify(hist))}catch(e){toast('Storage full. Media skipped from history.')}}
 function clearChatHistory(id){if(id)localStorage.removeItem('dd-p2p-chat-'+id)}
-function loadChatHistory(id){cBody.innerHTML='';var hist=getChatHistory(id);if(hist.length===0){appendMsgToDOM({t:'sys',txt:'No messages yet. Say hi!',ts:Date.now()})}else{hist.forEach(function(msg){appendMsgToDOM(msg)})}}
+function loadChatHistory(id){$cBody.innerHTML='';var hist=getChatHistory(id);if(hist.length===0){appendMsgToDOM({t:'sys',txt:'No messages yet. Say hi!',ts:Date.now()})}else{hist.forEach(function(msg){appendMsgToDOM(msg)})}}
 
 // --- Recent Connections & Presence ---
 function getRecents(){var s=localStorage.getItem('dd-p2p-recent');return s?JSON.parse(s):[]}
 function addRecent(id){if(!id)return;var recents=getRecents();recents=recents.filter(function(r){return r!==id});recents.unshift(id);if(recents.length>15)recents=recents.slice(0,15);localStorage.setItem('dd-p2p-recent',JSON.stringify(recents))}
 function clearRecents(){localStorage.removeItem('dd-p2p-recent');renderRecents()}
 function renderRecents(){
-  var recents=getRecents();if(recents.length===0){recSec.style.display='none';return}
-  recSec.style.display='block';recList.innerHTML='';
+  var recents=getRecents();if(recents.length===0){$recSec.style.display='none';return}
+  $recSec.style.display='block';$recList.innerHTML='';
   recents.forEach(function(id){
     var div=document.createElement('div');div.className='rec-item cutxs off';div.setAttribute('data-id',id);
     div.innerHTML='<div class="rec-dot"></div><span class="rec-id">'+getPeerName(id)+'</span>';
     div.onclick=function(){openChatWithPeer(this.getAttribute('data-id'))};
-    recList.appendChild(div);
+    $recList.appendChild(div);
   });
   setTimeout(function(){recents.forEach(function(id){if(conn&&conn.open&&conn.peer===id){updatePeerStatusUI(id,true)}else{checkPeerPresence(id)}})},100);
 }
@@ -416,13 +416,13 @@ function updatePeerStatusUI(id,isOnline){var item=document.querySelector('.rec-i
 
 // --- Typing Indicators ---
 function handleTyping(){if(!conn||!conn.open)return;if(!isTyping){isTyping=true;conn.send({t:'typing'})}clearTimeout(typingTimeout);typingTimeout=setTimeout(function(){isTyping=false},1500)}
-function showPeerTyping(){if(peerTyping)return;peerTyping=true;cSub.textContent='Typing...';cSub.classList.add('typing');clearTimeout(peerTypingTimeout);peerTypingTimeout=setTimeout(hidePeerTyping,2000)}
-function hidePeerTyping(){peerTyping=false;cSub.classList.remove('typing');cSub.textContent=conn&&conn.open?'Online':'Offline';if(voiceOn)cSub.textContent='Voice active'}
+function showPeerTyping(){if(peerTyping)return;peerTyping=true;$cSub.textContent='Typing...';$cSub.classList.add('typing');clearTimeout(peerTypingTimeout);peerTypingTimeout=setTimeout(hidePeerTyping,2000)}
+function hidePeerTyping(){peerTyping=false;$cSub.classList.remove('typing');$cSub.textContent=conn&&conn.open?'Online':'Offline';if(voiceOn)$cSub.textContent='Voice active'}
 
 // --- Media & Files ---
 function formatBytes(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB'}
 function handlePaste(e){if(!conn||!conn.open)return;var items=e.clipboardData.items;for(var i in items){if(items[i].type.indexOf('image')!==-1){processFile(items[i].getAsFile());e.preventDefault()}}}
-function handleFileSelect(){var file=fileInput.files[0];if(!file)return;processFile(file);fileInput.value=''}
+function handleFileSelect(){var file=$fileInput.files[0];if(!file)return;processFile(file);$fileInput.value=''}
 function processFile(file){
   if(!file)return;if(file.size>15*1024*1024){toast('File too large (Max 15MB)');return}
   if(!conn||!conn.open){toast('Offline: Cannot queue media files.');return}
@@ -456,7 +456,7 @@ function appendMsgToDOM(msg){
     else if(msg.media.type.startsWith('video/')){var vid=document.createElement('video');vid.src=msg.media.data;vid.controls=true;b.appendChild(vid);b.classList.add('media-msg')}
     else{var link=document.createElement('a');link.href=msg.media.data;link.download=msg.media.name||'file';link.className='file-dl cutxs';link.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';var info=document.createElement('div');info.className='file-dl-info';info.innerHTML='<span class="file-dl-name">'+(msg.media.name||'File')+'</span><span class="file-dl-size">'+formatBytes(msg.media.size||0)+'</span>';link.appendChild(info);b.appendChild(link)}
   }else{b.textContent=msg.txt}
-  d.appendChild(b);d.appendChild(tm);cBody.appendChild(d);cBody.scrollTop=cBody.scrollHeight;
+  d.appendChild(b);d.appendChild(tm);$cBody.appendChild(d);$cBody.scrollTop=$cBody.scrollHeight;
 }
 function addMsg(t,txt,kind,media,status,ts){
   if(!ts)ts=Date.now()+Math.random();var msg={t:t,kind:kind||'text',txt:txt,media:media,ts:ts,status:status||''};
@@ -473,8 +473,8 @@ function getLocked(){var s=localStorage.getItem('wz-p2p-id');if(s)return s;var n
 function rstId(){localStorage.removeItem('wz-p2p-id');location.reload()}
 function drawQR(canvas,size){var myId=getLocked(),url=BASE+'/?connect='+encodeURIComponent(myId);var qr=qrcode(0,'M');qr.addData(url);qr.make();var mc=qr.getModuleCount(),cs=Math.floor(size/mc);canvas.width=mc*cs;canvas.height=mc*cs;var ctx=canvas.getContext('2d');ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#000000';for(var r=0;r<mc;r++)for(var c=0;c<mc;c++){if(qr.isDark(r,c))ctx.fillRect(c*cs,r*cs,cs,cs)}}
 function shrQR(){var myId=getLocked(),url=BASE+'/?connect='+encodeURIComponent(myId);if(navigator.share){var bc=document.createElement('canvas');drawQR(bc,400);bc.toBlob(function(blob){if(navigator.canShare&&navigator.canShare({files:[new File([blob],'directdrop-qr.png',{type:'image/png'})]})){navigator.share({title:'DirectDrop Link',text:'Connect to me: '+myId,url:url,files:[new File([blob],'directdrop-qr.png',{type:'image/png'})]}).catch(function(){})}else{navigator.share({title:'DirectDrop Link',text:'Connect to me: '+myId,url:url}).catch(function(){})}},'image/png')}else{navigator.clipboard.writeText(url).then(function(){toast('Link copied')}).catch(function(){toast('Could not copy')})}}
-function setHdr(t,c){hS.textContent=t;hS.className='hdr-s '+c;hD.className='dt '+c}
-function toast(m){tst.textContent=m;tst.classList.add('show');setTimeout(function(){tst.classList.remove('show')},1800)}
+function setHdr(t,c){$hS.textContent=t;$hS.className='hdr-s '+c;$hD.className='dt '+c}
+function toast(m){$tst.textContent=m;$tst.classList.add('show');setTimeout(function(){$tst.classList.remove('show')},1800)}
 function switchToChat(){sSetup.classList.remove('on');sChat.classList.add('on');sCnSec.style.display='block';mIn.focus()}
 function goBack(){if(voiceOn)endCall();if(retryInterval)clearInterval(retryInterval);sChat.classList.remove('on');sSetup.classList.add('on');renderRecents()}
 function openSet(){sBg.classList.add('op');sDr.classList.add('op')}
@@ -525,8 +525,30 @@ function wireChat(){if(conn.open)handleConnOpen();else conn.on('open',handleConn
     }
     if(typeof d==='string'){var msg={t:'peer',kind:'text',txt:d,ts:Date.now(),status:''};saveChatMsg(friendId,msg);appendMsgToDOM(msg);notifyUser();if(conn&&conn.open)conn.send({t:'read',ts:msg.ts})}
   });
-  conn.on('close',function(){if(friendId&&(!conn||conn.peer===friendId)){if(manualConnTimeout)clearTimeout(manualConnTimeout);cSub.textContent='Offline';cSub.className='ch-ps';callBtn.disabled=true;fBtn.disabled=true;setCallUI('idle');conn=null;setHdr('ONLINE','on')}} шагырту
-  conn.on('error',function(){if(friendId&&(!conn||conn.peer===friendId)){if(manualConnTimeout)clearTimeout(manualConnTimeout);cSub.textContent='Offline';cSub.className='ch-ps';callBtn.disabled=true;fBtn.disabled=true;setCallUI('idle');conn=null;setHdr('ONLINE','on')}});
+  conn.on('close',function(){
+    if(friendId&&(!conn||conn.peer===friendId)){
+      if(manualConnTimeout)clearTimeout(manualConnTimeout);
+      cSub.textContent='Offline';
+      cSub.className='ch-ps';
+      callBtn.disabled=true;
+      fBtn.disabled=true;
+      setCallUI('idle');
+      conn=null;
+      setHdr('ONLINE','on');
+    }
+  });
+  conn.on('error',function(){
+    if(friendId&&(!conn||conn.peer===friendId)){
+      if(manualConnTimeout)clearTimeout(manualConnTimeout);
+      cSub.textContent='Offline';
+      cSub.className='ch-ps';
+      callBtn.disabled=true;
+      fBtn.disabled=true;
+      setCallUI('idle');
+      conn=null;
+      setHdr('ONLINE','on');
+    }
+  });
 }
 function disconn(){if(conn)try{conn.close()}catch(e){}conn=null;sChat.classList.remove('on');sSetup.classList.add('on');fIn.disabled=false;cBtn.disabled=false;sCnSec.style.display='none';if(voiceOn)handleEnd();setCallUI('idle');setHdr('ONLINE','on');renderRecents()}
 function clrChat(){if(!friendId)return;clearChatHistory(friendId);cBody.innerHTML='';addMsg('sys','Messages cleared.')}
