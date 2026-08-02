@@ -57,7 +57,7 @@ jobs:
           mkdir -p resources
           if [ -f icon.png ]; then
             cp icon.png resources/icon.png
-            npx capacitor-assets generate --android --icon
+            npx capacitor-assets generate --android
             echo "Icons generated successfully."
           else
             echo "icon.png not found, using default Capacitor icon."
