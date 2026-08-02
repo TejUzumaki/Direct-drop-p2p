@@ -27,14 +27,6 @@ jobs:
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli
 
-      - name: Initialize Bubblewrap Project
-        run: |
-          bubblewrap init \
-            --manifest https://directdropxtej.vercel.app/manifest.json \
-            --application-id com.tejuzumaki.directdrop \
-            --application-name "DirectDrop" \
-            --jdkPath $JAVA_HOME
-
       - name: Generate Keystore
         run: |
           keytool -genkeypair -v \
@@ -44,9 +36,10 @@ jobs:
             -storepass directdrop123 -keypass directdrop123 \
             -dname "CN=DirectDrop, OU=Dev, O=Tejas, L=Earth, ST=Earth, C=IN"
 
-      - name: Build APK
+      - name: Initialize and Build
         run: |
-          bubblewrap build \
+          yes "" | bubblewrap init --manifest https://directdropxtej.vercel.app/manifest.json
+          yes "" | bubblewrap build \
             --keystorePath ./directdrop.keystore \
             --keystorePassword directdrop123 \
             --keyAlias directdrop \
