@@ -1,8 +1,8 @@
 {
   "name": "Direct Drop P2P",
   "short_name": "DirectDrop",
-  "start_url": "https://directdropxtej.vercel.app/",
-  "scope": "https://directdropxtej.vercel.app/",
+  "start_url": "https://direct-drop-p2p.vercel.app/",
+  "scope": "https://direct-drop-p2p.vercel.app/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
