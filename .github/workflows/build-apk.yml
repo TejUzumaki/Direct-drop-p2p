@@ -63,9 +63,9 @@ jobs:
             echo "icon.png not found, using default Capacitor icon."
           fi
           
-      - name: Inject Android Permissions (Mic, Camera, Vibrate, Storage)
+      - name: Inject Android Permissions (Notifications, Mic, Camera, Vibrate, Storage)
         run: |
-          sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO" />\n<uses-permission android:name="android.permission.CAMERA" />\n<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n<uses-permission android:name="android.permission.VIBRATE" />\n<application|g' android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n<uses-permission android:name="android.permission.RECORD_AUDIO" />\n<uses-permission android:name="android.permission.CAMERA" />\n<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n<uses-permission android:name="android.permission.VIBRATE" />\n<application|g' android/app/src/main/AndroidManifest.xml
           
       - name: Build APK
         run: |
