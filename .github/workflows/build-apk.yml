@@ -1,59 +1,59 @@
-name: Build DirectDrop APK
+name: Build DirectDrop APK (Capacitor)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Setup Java JDK
-        uses: actions/setup-java@v3
+      - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Bubblewrap
-        run: npm install -g @bubblewrap/cli
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Generate Keystore
+      - name: Install Capacitor
         run: |
-          keytool -genkeypair -v \
-            -keystore directdrop.keystore \
-            -alias directdrop \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass directdrop123 -keypass directdrop123 \
-            -dname "CN=DirectDrop, OU=Dev, O=Tejas, L=Earth, ST=Earth, C=IN"
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
 
-      - name: Initialize Bubblewrap
+      - name: Initialize Project
         run: |
-          bubblewrap init \
-            --manifest https://raw.githubusercontent.com/TejUzumaki/Direct-drop-p2p/main/manifest.json \
-            --packageId com.tejuzumaki.directdrop \
-            --displayname "DirectDrop" \
-            --jdkPath $JAVA_HOME
+          npx cap init DirectDrop com.tejuzumaki.directdrop --web-dir www
+          rm -f capacitor.config.ts
+          cat << 'JSON' > capacitor.config.json
+          {
+            "appId": "com.tejuzumaki.directdrop",
+            "appName": "DirectDrop",
+            "webDir": "www",
+            "server": {
+              "androidScheme": "https",
+              "url": "https://directdropxtej.vercel.app"
+            }
+          }
+          JSON
 
-      - name: Build APK
+      - name: Build Android APK
         run: |
-          bubblewrap build \
-            --keystorePath ./directdrop.keystore \
-            --keystorePassword directdrop123 \
-            --keyAlias directdrop \
-            --keyPassword directdrop123
+          npx cap add android
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: DirectDrop-APK
-          path: app-release-signed.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
