@@ -2,7 +2,7 @@ name: Build DirectDrop APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -30,12 +30,12 @@ jobs:
           mkdir -p ~/.android && touch ~/.android/repositories.cfg
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
         
-      - name: Install Capacitor v6 (Stable)
+      - name: Install Capacitor & Asset Generator
         run: |
           mkdir -p www
           echo "<html><body>Loading DirectDrop...</body></html>" > www/index.html
           npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/assets
           npx cap init DirectDrop com.tejuzumaki.directdrop --web-dir www
           cat << 'JSON' > capacitor.config.json
           {
@@ -49,6 +49,21 @@ jobs:
           }
           JSON
           npx cap add android
+          
+      - name: Generate Native Icons
+        run: |
+          mkdir -p resources
+          if [ -f icon.png ]; then
+            cp icon.png resources/icon.png
+            npx capacitor-assets generate --android --icon
+            echo "Icons generated successfully."
+          else
+            echo "icon.png not found, using default Capacitor icon."
+          fi
+          
+      - name: Inject Android Permissions (Mic, Camera, Vibrate)
+        run: |
+          sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO" />\n<uses-permission android:name="android.permission.CAMERA" />\n<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n<uses-permission android:name="android.permission.VIBRATE" />\n<application|g' android/app/src/main/AndroidManifest.xml
           
       - name: Build APK
         run: |
