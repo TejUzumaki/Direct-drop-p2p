@@ -44,7 +44,7 @@ jobs:
             "webDir": "www",
             "server": {
               "androidScheme": "https",
-              "url": "https://directdropxtej.vercel.app"
+              "url": "https://direct-drop-p2p.vercel.app"
             }
           }
           JSON
