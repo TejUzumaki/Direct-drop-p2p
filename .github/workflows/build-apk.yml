@@ -1,4 +1,4 @@
-name: Build DirectDrop APK (Capacitor)
+name: Build DirectDrop APK
 
 on:
   push:
@@ -24,19 +24,19 @@ jobs:
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;34.0.0 platforms;android-34'
+          
+      - name: Accept Android Licenses
+        run: yes | sdkmanager --licenses || true
         
-      - name: Install Capacitor & Create Web Dir
+      - name: Install Capacitor & Create Config
         run: |
           mkdir -p www
           echo "<html><body>Loading DirectDrop...</body></html>" > www/index.html
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android
-          
-      - name: Init Capacitor
-        run: npx cap init DirectDrop com.tejuzumaki.directdrop --web-dir www
-        
-      - name: Configure Remote URL
-        run: |
+          npx cap init DirectDrop com.tejuzumaki.directdrop --web-dir www
           cat << 'JSON' > capacitor.config.json
           {
             "appId": "com.tejuzumaki.directdrop",
@@ -48,14 +48,13 @@ jobs:
             }
           }
           JSON
-          
-      - name: Build APK
-        run: |
           npx cap add android
-          npx cap sync android
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          
+      - name: Build APK with Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: assembleDebug
+          build-root-directory: android
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
