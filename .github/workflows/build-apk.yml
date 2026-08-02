@@ -36,10 +36,16 @@ jobs:
             -storepass directdrop123 -keypass directdrop123 \
             -dname "CN=DirectDrop, OU=Dev, O=Tejas, L=Earth, ST=Earth, C=IN"
 
-      - name: Initialize and Build
+      - name: Initialize Bubblewrap
         run: |
-          yes "" | bubblewrap init --manifest https://directdropxtej.vercel.app/manifest.json
-          yes "" | bubblewrap build \
+          bubblewrap init \
+            -m https://directdropxtej.vercel.app/manifest.json \
+            -n "DirectDrop" \
+            -i com.tejuzumaki.directdrop
+
+      - name: Build APK
+        run: |
+          bubblewrap build \
             --keystorePath ./directdrop.keystore \
             --keystorePassword directdrop123 \
             --keyAlias directdrop \
