@@ -39,9 +39,10 @@ jobs:
       - name: Initialize Bubblewrap
         run: |
           bubblewrap init \
-            -m https://directdropxtej.vercel.app/manifest.json \
-            -n "DirectDrop" \
-            -i com.tejuzumaki.directdrop
+            --manifest https://raw.githubusercontent.com/TejUzumaki/Direct-drop-p2p/main/manifest.json \
+            --packageId com.tejuzumaki.directdrop \
+            --displayname "DirectDrop" \
+            --jdkPath $JAVA_HOME
 
       - name: Build APK
         run: |
