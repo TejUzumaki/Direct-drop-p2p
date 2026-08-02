@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>DIRECTDROP</title>
+<link rel="manifest" href="/manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
@@ -203,7 +204,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
       </div>
       <div class="id-er" id="idEr">Callsign conflict. Regenerating...<br><button class="b-ln" onclick="rstId()" style="margin-top:4px">Generate new callsign</button></div>
     </div>
-    
+
     <div class="cd cut" id="recSec" style="display:none">
       <div class="cl">
         <span>Recent Connections</span>
@@ -368,11 +369,21 @@ var $unameInpSetup=document.getElementById('unameInpSetup'),$unameInpSet=documen
  $fileInput.addEventListener('change',handleFileSelect);
 window.addEventListener('focus', function() { document.title = 'DIRECTDROP'; });
 
+// --- PWA & Notifications ---
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js').catch(function(e){console.log('SW Error:',e)});
+}
+function requestNotifPerm() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
 // --- Identity & Profile ---
 function getMyUsername(){return localStorage.getItem('dd-p2p-username')||'Anonymous'}
 function saveUsername(){
   var val=($unameInpSetup.value||$unameInpSet.value).trim();
-  if(val){localStorage.setItem('dd-p2p-username',val);$unameInpSetup.value=val;$unameInpSet.value=val;toast('Username saved');if(conn&&conn.open)conn.send({t:'profile',username:val})}
+  if(val){localStorage.setItem('dd-p2p-username',val);$unameInpSetup.value=val;$unameInpSet.value=val;toast('Username saved');requestNotifPerm();if(conn&&conn.open)conn.send({t:'profile',username:val})}
 }
 function loadUsernameFields(){var u=getMyUsername();if(u!=='Anonymous'){$unameInpSetup.value=u;$unameInpSet.value=u}}
 function getPeerName(id){var names=JSON.parse(localStorage.getItem('dd-p2p-names')||'{}');return names[id]||id}
@@ -380,7 +391,30 @@ function savePeerName(id,name){if(!id||!name)return;var names=JSON.parse(localSt
 
 // --- Notifications ---
 function playPing(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=880;o.type='sine';g.gain.setValueAtTime(0.1,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.2);o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+0.2)}catch(e){}}
-function notifyUser(){if(!document.hasFocus()||document.hidden){try{navigator.vibrate(200)}catch(e){}playPing();document.title='(1) DIRECTDROP'}}
+function notifyUser(msg) {
+  if (!document.hasFocus() || document.hidden) {
+    try { navigator.vibrate(200); } catch(e) {}
+    playPing();
+    document.title = '(1) DIRECTDROP';
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+      var notifBody = 'New message';
+      if (msg) {
+        if (msg.kind === 'media') notifBody = 'New media received';
+        else if (msg.txt) notifBody = msg.txt;
+      }
+      try {
+        var n = new Notification('DIRECTDROP', {
+          body: notifBody,
+          icon: '/icon-192.png',
+          tag: 'directdrop-msg',
+          vibrate: [200, 100, 200]
+        });
+        n.onclick = function() { window.focus(); this.close(); };
+      } catch(e) {}
+    }
+  }
+}
 
 // --- Chat History ---
 function getChatHistory(id){if(!id)return[];try{return JSON.parse(localStorage.getItem('dd-p2p-chat-'+id)||'[]')}catch(e){return[]}}
@@ -487,6 +521,7 @@ function setCallUI(state){cBar.classList.remove('show');callBtn.classList.remove
 function initPeer(){
   var myId=getLocked();mId.textContent=myId;sId.textContent=myId;setHdr('CONNECTING','lk');
   drawQR(document.getElementById('qrS'),160);drawQR(document.getElementById('qrSt'),200);
+  requestNotifPerm(); // Request notification permission on load
   peer=new Peer(myId,{debug:0});
   peer.on('open',function(id){setHdr('ONLINE','on');cBtn.disabled=false;idEr.classList.remove('show');reconnectAttempts=0;renderRecents();var p=new URLSearchParams(window.location.search),t=p.get('connect');if(t&&t.trim()!==id&&t.trim().toUpperCase()!==id){fIn.value=t.trim().toUpperCase();manConn();window.history.replaceState({},'',window.location.pathname)}});
   peer.on('connection',function(dc){if(dc.metadata&&dc.metadata.ping){dc.on('open',function(){try{dc.close()}catch(e){}});return}if(conn&&conn.open){dc.on('open',function(){dc.close()});return}conn=dc;friendId=dc.peer;loadChatHistory(friendId);cPeer.textContent=getPeerName(friendId);cSub.textContent='Online';cSub.className='ch-ps lv';mIn.disabled=false;sBtn.disabled=false;callBtn.disabled=false;fBtn.disabled=false;switchToChat();wireChat()});
@@ -517,13 +552,13 @@ function wireChat(){if(conn.open)handleConnOpen();else conn.on('open',handleConn
       else if(d.t==='voice_end'){handleEnd()}
       else if(d.t==='typing'){showPeerTyping()}
       else if(d.t==='read'){markMsgRead(d.ts)}
-      else if(d.t==='msg'){var msg={t:'peer',kind:d.kind||'text',txt:d.txt,media:d.media,ts:d.ts,status:''};saveChatMsg(friendId,msg);appendMsgToDOM(msg);notifyUser();if(conn&&conn.open)conn.send({t:'read',ts:d.ts})}
+      else if(d.t==='msg'){var msg={t:'peer',kind:d.kind||'text',txt:d.txt,media:d.media,ts:d.ts,status:''};saveChatMsg(friendId,msg);appendMsgToDOM(msg);notifyUser(d);if(conn&&conn.open)conn.send({t:'read',ts:d.ts})}
       else if(d.t==='file-meta'){incomingFile={id:d.id,name:d.name,mime:d.mime,size:d.size,chunks:[]};addMsg('sys','Receiving '+d.name+'...')}
       else if(d.t==='file-chunk'&&incomingFile&&incomingFile.id===d.id){incomingFile.chunks.push(d.d)}
-      else if(d.t==='file-end'&&incomingFile&&incomingFile.id===d.id){var blob=new Blob(incomingFile.chunks,{type:incomingFile.mime}),url=URL.createObjectURL(blob);appendMsgToDOM({t:'peer',kind:'media',txt:'',media:{type:incomingFile.mime,data:url,name:incomingFile.name,size:incomingFile.size},ts:Date.now(),status:''});addMsg('sys','File received.');incomingFile=null}
+      else if(d.t==='file-end'&&incomingFile&&incomingFile.id===d.id){var blob=new Blob(incomingFile.chunks,{type:incomingFile.mime}),url=URL.createObjectURL(blob);appendMsgToDOM({t:'peer',kind:'media',txt:'',media:{type:incomingFile.mime,data:url,name:incomingFile.name,size:incomingFile.size},ts:Date.now(),status:''});addMsg('sys','File received.');notifyUser({kind:'media', txt:'File: '+incomingFile.name});incomingFile=null}
       return;
     }
-    if(typeof d==='string'){var msg={t:'peer',kind:'text',txt:d,ts:Date.now(),status:''};saveChatMsg(friendId,msg);appendMsgToDOM(msg);notifyUser();if(conn&&conn.open)conn.send({t:'read',ts:msg.ts})}
+    if(typeof d==='string'){var msg={t:'peer',kind:'text',txt:d,ts:Date.now(),status:''};saveChatMsg(friendId,msg);appendMsgToDOM(msg);notifyUser({txt:d, kind:'text'});if(conn&&conn.open)conn.send({t:'read',ts:msg.ts})}
   });
   conn.on('close',function(){
     if(friendId&&(!conn||conn.peer===friendId)){
