@@ -36,7 +36,9 @@ jobs:
           echo "<html><body>Loading DirectDrop...</body></html>" > www/index.html
           npm init -y
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/assets
-          npx cap init DirectDrop com.tejuzumaki.directdrop --web-dir www
+          
+      - name: Initialize Config & Android
+        run: |
           cat << 'JSON' > capacitor.config.json
           {
             "appId": "com.tejuzumaki.directdrop",
