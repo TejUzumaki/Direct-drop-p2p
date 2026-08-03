@@ -28,12 +28,12 @@ jobs:
           mkdir -p ~/.android && touch ~/.android/repositories.cfg
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
         
-      - name: Install Capacitor v6 & Asset Generator
+      - name: Install Capacitor v6, Share Plugin & Asset Generator
         run: |
           mkdir -p www
           echo "<html><body>Loading DirectDrop...</body></html>" > www/index.html
           npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/assets
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/assets @capacitor/share@6
           
       - name: Initialize Config & Android
         run: |
@@ -49,6 +49,7 @@ jobs:
           }
           JSON
           npx cap add android
+          npx cap sync
           
       - name: Generate Native Icons
         run: |

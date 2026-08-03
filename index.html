@@ -125,8 +125,11 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .mg-y .mt{color:rgba(255,255,255,.25)}
 .tick{font-size:11px;color:rgba(255,255,255,.4)}
 .tick.read{color:var(--wh)}
-.media-msg{max-width:220px;border-radius:4px;overflow:hidden;cursor:pointer;padding:0;background:transparent !important;border:none !important}
+.media-msg{max-width:220px;border-radius:4px;overflow:hidden;cursor:pointer;padding:0;background:transparent !important;border:none !important;position:relative}
 .media-msg img, .media-msg video{width:100%;height:auto;display:block;border-radius:4px;max-height:300px;object-fit:cover}
+.media-thumb{filter:blur(8px);transform:scale(1.1);opacity:0.8}
+.media-placeholder{width:100%;min-height:100px;background:var(--s3);display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:10px;letter-spacing:1px}
+.media-progress{position:absolute;bottom:0;left:0;height:3px;background:var(--olive);width:0%;transition:width .2s;z-index:5}
 .file-dl{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--wh);background:var(--s3);padding:10px;border-radius:4px;border:1px solid var(--bd)}
 .file-dl svg{width:20px;height:20px;flex-shrink:0}
 .file-dl-info{display:flex;flex-direction:column;overflow:hidden}
@@ -293,7 +296,8 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
   </div>
   <div class="ch-bd" id="cBody"></div>
   <div class="ch-bar">
-    <input type="file" id="fileInput" accept="image/*,video/*,*" style="display:none">
+    <!-- FIX: accept="*/*" forces the native Android file picker to show all files, not just gallery -->
+    <input type="file" id="fileInput" accept="*/*" style="display:none">
     <button class="fb" id="fBtn" onclick="document.getElementById('fileInput').click()" disabled aria-label="Send file">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
     </button>
@@ -516,27 +520,99 @@ function handleTyping(){if(!conn||!conn.open)return;if(!isTyping){isTyping=true;
 function showPeerTyping(){if(peerTyping)return;peerTyping=true;$cSub.textContent='Typing...';$cSub.classList.add('typing');clearTimeout(peerTypingTimeout);peerTypingTimeout=setTimeout(hidePeerTyping,2000)}
 function hidePeerTyping(){peerTyping=false;$cSub.classList.remove('typing');$cSub.textContent=conn&&conn.open?'Online':'Offline';if(voiceOn)$cSub.textContent='Voice active'}
 
-// --- Media & Files ---
+// --- Media & Files (Backpressure & WhatsApp UX) ---
 function formatBytes(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB'}
 function handlePaste(e){if(!conn||!conn.open)return;var items=e.clipboardData.items;for(var i in items){if(items[i].type.indexOf('image')!==-1){processFile(items[i].getAsFile());e.preventDefault()}}}
 function handleFileSelect(){var file=$fileInput.files[0];if(!file)return;processFile(file);$fileInput.value=''}
 function processFile(file){
   if(!file)return;if(file.size>15*1024*1024){toast('File too large (Max 15MB)');return}
   if(!conn||!conn.open){toast('Offline: Cannot queue media files.');return}
-  var reader=new FileReader();reader.onload=function(e){
-    var buffer=e.target.result,chunkSize=16384,offset=0,fileId='f'+Date.now(),ts=Date.now()+Math.random();
-    conn.send({t:'file-meta',id:fileId,name:file.name,mime:file.type,size:file.size});
-    addMsg('sys','Sending '+file.name+'...');
-    function sendChunk(){
-      var chunk=buffer.slice(offset,offset+chunkSize);conn.send({t:'file-chunk',id:fileId,d:chunk});offset+=chunk.length;
-      if(offset<buffer.size){setTimeout(sendChunk,10)}else{
-        conn.send({t:'file-end',id:fileId});
-        var blob=new Blob([buffer],{type:file.type}),url=URL.createObjectURL(blob);
-        appendMsgToDOM({t:'you',kind:'media',txt:'',media:{type:file.type,data:url,name:file.name,size:file.size},ts:ts,status:'sent'});
+  
+  var fileId='f'+Date.now(),ts=Date.now()+Math.random();
+  var isImg = file.type.startsWith('image/');
+  
+  // 1. Create local message instantly
+  var localMsg = {t:'you', kind:'media', txt:'', media:{type:file.type, data:'', name:file.name, size:file.size}, ts:ts, status:'sent', progress:0};
+  appendMsgToDOM(localMsg);
+  
+  // 2. Send metadata to peer
+  conn.send({t:'file-meta', id:fileId, name:file.name, mime:file.type, size:file.size});
+  addMsg('sys','Sending '+file.name+'...');
+
+  // 3. Read file and chunk it with backpressure
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var buffer = e.target.result, chunkSize = 16384, offset = 0;
+    
+    function sendChunk() {
+      if (!conn || !conn.open) return;
+      // BACKPRESSURE: If buffer is > 1MB, wait 50ms and retry
+      if (conn.bufferedAmount > 1048576) {
+        setTimeout(sendChunk, 50);
+        return;
+      }
+      
+      var chunk = buffer.slice(offset, offset + chunkSize);
+      conn.send({t:'file-chunk', id:fileId, d:chunk});
+      offset += chunk.length;
+      
+      var progress = Math.round((offset / buffer.size) * 100);
+      updateProgressUI(ts, progress);
+      
+      if (offset < buffer.size) {
+        setTimeout(sendChunk, 0); // yield to UI thread
+      } else {
+        conn.send({t:'file-end', id:fileId});
+        var blob = new Blob([buffer], {type: file.type});
+        var url = URL.createObjectURL(blob);
+        finalizeMediaUI(ts, url); // Swap blur for real image locally
       }
     }
     sendChunk();
-  };reader.readAsArrayBuffer(file);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function updateProgressUI(ts, progress) {
+  var el = document.querySelector('.mt[data-ts="'+ts+'"]');
+  if(el) {
+    var bar = el.previousElementSibling.querySelector('.media-progress');
+    if(bar) bar.style.width = progress + '%';
+  }
+}
+
+function finalizeMediaUI(ts, url) {
+  var el = document.querySelector('.mt[data-ts="'+ts+'"]');
+  if(el) {
+    var mediaBox = el.previousElementSibling;
+    var bar = mediaBox.querySelector('.media-progress');
+    if(bar) bar.remove();
+    var placeholder = mediaBox.querySelector('.media-placeholder');
+    if(placeholder) placeholder.remove();
+    var img = mediaBox.querySelector('img.media-thumb');
+    if(img) {
+      img.classList.remove('media-thumb');
+      img.src = url;
+    } else {
+      // Video or file: append actual element
+      var type = mediaBox.getAttribute('data-mime');
+      if(type && type.startsWith('video/')) {
+        var vid = document.createElement('video');
+        vid.src = url; vid.controls = true;
+        mediaBox.appendChild(vid);
+      } else {
+        var link = document.createElement('a');
+        link.href = url; link.download = mediaBox.getAttribute('data-name') || 'file';
+        link.className = 'file-dl cutxs';
+        link.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+        var info = document.createElement('div');
+        info.className = 'file-dl-info';
+        info.innerHTML = '<span class="file-dl-name">'+(mediaBox.getAttribute('data-name')||'File')+'</span><span class="file-dl-size">'+formatBytes(mediaBox.getAttribute('data-size')||0)+'</span>';
+        link.appendChild(info);
+        mediaBox.appendChild(link);
+      }
+    }
+  }
 }
 
 // --- Rendering ---
@@ -548,11 +624,34 @@ function appendMsgToDOM(msg){
   tm.innerHTML=timeStr+tick;tm.setAttribute('data-ts',msg.ts);
   if(msg.t==='sys'){d.className='mg mg-s';b.className='mb';b.textContent=msg.txt}
   else if(msg.t==='you'){d.className='mg mg-y';b.className='mb'}else{d.className='mg mg-p';b.className='mb'}
+  
   if(msg.kind==='media'&&msg.media){
-    if(msg.media.type.startsWith('image/')){var img=document.createElement('img');img.src=msg.media.data;b.appendChild(img);b.classList.add('media-msg')}
-    else if(msg.media.type.startsWith('video/')){var vid=document.createElement('video');vid.src=msg.media.data;vid.controls=true;b.appendChild(vid);b.classList.add('media-msg')}
-    else{var link=document.createElement('a');link.href=msg.media.data;link.download=msg.media.name||'file';link.className='file-dl cutxs';link.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';var info=document.createElement('div');info.className='file-dl-info';info.innerHTML='<span class="file-dl-name">'+(msg.media.name||'File')+'</span><span class="file-dl-size">'+formatBytes(msg.media.size||0)+'</span>';link.appendChild(info);b.appendChild(link)}
-  }else{b.textContent=msg.txt}
+    b.className='mb media-msg';
+    b.setAttribute('data-mime', msg.media.type);
+    b.setAttribute('data-name', msg.media.name);
+    b.setAttribute('data-size', msg.media.size);
+    
+    // Add progress bar
+    var bar = document.createElement('div');
+    bar.className = 'media-progress';
+    if(msg.progress) bar.style.width = msg.progress + '%';
+    b.appendChild(bar);
+    
+    if(msg.media.data) {
+      // Fully loaded media
+      if(msg.media.type.startsWith('image/')){var img=document.createElement('img');img.src=msg.media.data;b.appendChild(img)}
+      else if(msg.media.type.startsWith('video/')){var vid=document.createElement('video');vid.src=msg.media.data;vid.controls=true;b.appendChild(vid)}
+      else{var link=document.createElement('a');link.href=msg.media.data;link.download=msg.media.name||'file';link.className='file-dl cutxs';link.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';var info=document.createElement('div');info.className='file-dl-info';info.innerHTML='<span class="file-dl-name">'+(msg.media.name||'File')+'</span><span class="file-dl-size">'+formatBytes(msg.media.size||0)+'</span>';link.appendChild(info);b.appendChild(link)}
+      bar.remove(); // Remove bar if already fully loaded
+    } else {
+      // Placeholder/Blurry state
+      var placeholder = document.createElement('div');
+      placeholder.className = 'media-placeholder';
+      placeholder.textContent = 'LOADING...';
+      b.appendChild(placeholder);
+    }
+  } else { b.textContent=msg.txt }
+  
   d.appendChild(b);d.appendChild(tm);$cBody.appendChild(d);$cBody.scrollTop=$cBody.scrollHeight;
 }
 function addMsg(t,txt,kind,media,status,ts){
@@ -583,7 +682,6 @@ function onScanSuccess(decodedText) {
       manConn();
     }
   } catch(e) {
-    // If it's not a URL, check if it's a raw callsign
     if(decodedText.length >= 8 && decodedText.includes('-')) {
       stopScan();
       $fIn.value = decodedText.toUpperCase();
@@ -608,7 +706,29 @@ function genId(){var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';function p(){var 
 function getLocked(){var s=localStorage.getItem('wz-p2p-id');if(s)return s;var n=genId();localStorage.setItem('wz-p2p-id',n);return n}
 function rstId(){localStorage.removeItem('wz-p2p-id');location.reload()}
 function drawQR(canvas,size){var myId=getLocked(),url=BASE+'/?connect='+encodeURIComponent(myId);var qr=qrcode(0,'M');qr.addData(url);qr.make();var mc=qr.getModuleCount(),cs=Math.floor(size/mc);canvas.width=mc*cs;canvas.height=mc*cs;var ctx=canvas.getContext('2d');ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#000000';for(var r=0;r<mc;r++)for(var c=0;c<mc;c++){if(qr.isDark(r,c))ctx.fillRect(c*cs,r*cs,cs,cs)}}
-function shrQR(){var myId=getLocked(),url=BASE+'/?connect='+encodeURIComponent(myId);if(navigator.share){var bc=document.createElement('canvas');drawQR(bc,400);bc.toBlob(function(blob){if(navigator.canShare&&navigator.canShare({files:[new File([blob],'directdrop-qr.png',{type:'image/png'})]})){navigator.share({title:'DirectDrop Link',text:'Connect to me: '+myId,url:url,files:[new File([blob],'directdrop-qr.png',{type:'image/png'})]}).catch(function(){})}else{navigator.share({title:'DirectDrop Link',text:'Connect to me: '+myId,url:url}).catch(function(){})}},'image/png')}else{navigator.clipboard.writeText(url).then(function(){toast('Link copied')}).catch(function(){toast('Could not copy')})}}
+function shrQR(){
+  var myId=getLocked(),url=BASE+'/?connect='+encodeURIComponent(myId);
+  var bc=document.createElement('canvas');drawQR(bc,400);
+  bc.toBlob(function(blob){
+    var file = new File([blob],'directdrop-qr.png',{type:'image/png'});
+    
+    // FIX: Native Share Bridge for Capacitor
+    if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.Share) {
+      Capacitor.Plugins.Share.share({
+        title: 'DirectDrop Link',
+        text: 'Connect to me: ' + myId,
+        url: url,
+        dialogTitle: 'Share DirectDrop'
+      }).catch(function(e){ console.log('Cap Share err', e); toast('Share failed'); });
+    } else if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ title: 'DirectDrop Link', text: 'Connect to me: '+myId, url: url, files: [file] }).catch(function(){});
+    } else if (navigator.share) {
+      navigator.share({ title: 'DirectDrop Link', text: 'Connect to me: '+myId, url: url }).catch(function(){});
+    } else {
+      navigator.clipboard.writeText(url).then(function(){toast('Link copied')}).catch(function(){toast('Could not copy')});
+    }
+  },'image/png');
+}
 function setHdr(t,c){$hS.textContent=t;$hS.className='hdr-s '+c;$hD.className='dt '+c}
 function toast(m){$tst.textContent=m;$tst.classList.add('show');setTimeout(function(){$tst.classList.remove('show')},1800)}
 function switchToChat(){sSetup.classList.remove('on');sChat.classList.add('on');sCnSec.style.display='block';mIn.focus()}
@@ -663,9 +783,56 @@ function wireChat(){if(conn.open)handleConnOpen();else conn.on('open',handleConn
       else if(d.t==='typing'){showPeerTyping()}
       else if(d.t==='read'){markMsgRead(d.ts)}
       else if(d.t==='msg'){var msg={t:'peer',kind:d.kind||'text',txt:d.txt,media:d.media,ts:d.ts,status:''};saveChatMsg(friendId,msg);appendMsgToDOM(msg);notifyUser(d);if(conn&&conn.open)conn.send({t:'read',ts:d.ts})}
-      else if(d.t==='file-meta'){incomingFile={id:d.id,name:d.name,mime:d.mime,size:d.size,chunks:[]};addMsg('sys','Receiving '+d.name+'...')}
-      else if(d.t==='file-chunk'&&incomingFile&&incomingFile.id===d.id){incomingFile.chunks.push(d.d)}
-      else if(d.t==='file-end'&&incomingFile&&incomingFile.id===d.id){var blob=new Blob(incomingFile.chunks,{type:incomingFile.mime}),url=URL.createObjectURL(blob);appendMsgToDOM({t:'peer',kind:'media',txt:'',media:{type:incomingFile.mime,data:url,name:incomingFile.name,size:incomingFile.size},ts:Date.now(),status:''});addMsg('sys','File received.');notifyUser({kind:'media', txt:'File: '+incomingFile.name});incomingFile=null}
+      else if(d.t==='file-meta'){
+        incomingFile={id:d.id,name:d.name,mime:d.mime,size:d.size,chunks:[]};
+        var peerMsg={t:'peer',kind:'media',txt:'',media:{type:d.mime,data:'',name:d.name,size:d.size},ts:Date.now(),status:''};
+        appendMsgToDOM(peerMsg);
+        addMsg('sys','Receiving '+d.name+'...');
+      }
+      else if(d.t==='file-chunk'&&incomingFile&&incomingFile.id===d.id){
+        incomingFile.chunks.push(d.d);
+        var progress = Math.round((incomingFile.chunks.length * 16384 / incomingFile.size) * 100);
+        if(progress > 100) progress = 100;
+        // Note: This requires finding the most recent peer media message to update progress
+        var els = document.querySelectorAll('.mg-p .media-progress');
+        if(els.length > 0) els[els.length-1].style.width = progress + '%';
+      }
+      else if(d.t==='file-end'&&incomingFile&&incomingFile.id===d.id){
+        var blob=new Blob(incomingFile.chunks,{type:incomingFile.mime});
+        var url=URL.createObjectURL(blob);
+        
+        // Finalize receiver UI
+        var els = document.querySelectorAll('.mg-p .media-msg');
+        if(els.length > 0) {
+          var el = els[els.length-1];
+          var bar = el.querySelector('.media-progress');
+          if(bar) bar.remove();
+          var placeholder = el.querySelector('.media-placeholder');
+          if(placeholder) placeholder.remove();
+          
+          if(incomingFile.mime.startsWith('image/')){
+            var img=document.createElement('img');
+            img.src=url;
+            el.appendChild(img);
+          } else if(incomingFile.mime.startsWith('video/')){
+            var vid=document.createElement('video');
+            vid.src=url;vid.controls=true;
+            el.appendChild(vid);
+          } else {
+            var link=document.createElement('a');
+            link.href=url;link.download=incomingFile.name||'file';
+            link.className='file-dl cutxs';
+            link.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+            var info=document.createElement('div');info.className='file-dl-info';
+            info.innerHTML='<span class="file-dl-name">'+(incomingFile.name||'File')+'</span><span class="file-dl-size">'+formatBytes(incomingFile.size||0)+'</span>';
+            link.appendChild(info);
+            el.appendChild(link);
+          }
+        }
+        addMsg('sys','File received.');
+        notifyUser({kind:'media', txt:'File: '+incomingFile.name});
+        incomingFile=null;
+      }
       return;
     }
     if(typeof d==='string'){var msg={t:'peer',kind:'text',txt:d,ts:Date.now(),status:''};saveChatMsg(friendId,msg);appendMsgToDOM(msg);notifyUser({txt:d, kind:'text'});if(conn&&conn.open)conn.send({t:'read',ts:msg.ts})}
@@ -687,9 +854,10 @@ function disconn(){if(conn)try{conn.close()}catch(e){}conn=null;sChat.classList.
 function clrChat(){if(!friendId)return;clearChatHistory(friendId);cBody.innerHTML='';addMsg('sys','Messages cleared.')}
 function sendMsg(){var t=mIn.value.trim();if(!t)return;var ts=Date.now()+Math.random();var msg={t:'you',kind:'text',txt:t,ts:ts,status:'pending'};if(conn&&conn.open){conn.send({t:'msg',kind:'text',txt:t,ts:ts});msg.status='sent'}else{toast('Offline: Message queued')}saveChatMsg(friendId,msg);appendMsgToDOM(msg);mIn.value='';mIn.focus();isTyping=false;clearTimeout(typingTimeout)}
 
-// --- Voice & Video Calls ---
+// --- Voice & Video Calls (HD Video) ---
 function getMic(){if(localStream&&localStream.active)return Promise.resolve(localStream);return navigator.mediaDevices.getUserMedia({audio:true,video:false}).then(function(s){localStream=s;return s}).catch(function(e){toast('Microphone access required');throw e})}
-function getVideoMic(){if(localStream&&localStream.active&&localStream.getVideoTracks().length>0)return Promise.resolve(localStream);return navigator.mediaDevices.getUserMedia({video:{facingMode:currentFacingMode},audio:true}).then(function(s){localStream=s;return s}).catch(function(e){toast('Camera/Mic access required');throw e})}
+// FIX: Enforce 720p 30fps for high-quality video calls
+function getVideoMic(){if(localStream&&localStream.active&&localStream.getVideoTracks().length>0)return Promise.resolve(localStream);return navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30},facingMode:currentFacingMode},audio:true}).then(function(s){localStream=s;return s}).catch(function(e){toast('Camera/Mic access required');throw e})}
 function placeCall(){if(!friendId||!conn||!conn.open)return;isVideoCall=false;setCallUI('calling');getMic().then(function(stream){activeCall=peer.call(friendId,stream,{metadata:{type:'audio'}});if(!activeCall){addMsg('sys','Call failed.');setCallUI('idle');return}activeCall.on('stream',function(r){rAud.srcObject=r;voiceOn=true;startTimer();setCallUI('connected');addMsg('sys','Voice channel open.')});activeCall.on('close',handleEnd);activeCall.on('error',handleEnd)}).catch(function(){setCallUI('idle')})}
 function placeVideoCall(){if(!friendId||!conn||!conn.open)return;isVideoCall=true;setCallUI('calling');getVideoMic().then(function(stream){$localVid.srcObject=stream;$vCallOv.classList.add('show');$vPeer.textContent=getPeerName(friendId);$vSub.textContent='Calling...';activeCall=peer.call(friendId,stream,{metadata:{type:'video'}});if(!activeCall){addMsg('sys','Call failed.');handleEnd();return}activeCall.on('stream',function(r){$remoteVid.srcObject=r;voiceOn=true;startTimer();setCallUI('connected');addMsg('sys','Video channel open.')});activeCall.on('close',handleEnd);activeCall.on('error',handleEnd)}).catch(function(){handleEnd()})}
 function accCall(){cOv.classList.remove('show');if(!incomingCall)return;
@@ -723,7 +891,7 @@ function switchCamera(){
   if(!localStream||localStream.getVideoTracks().length===0)return;
   currentFacingMode=(currentFacingMode==='user')?'environment':'user';
   localStream.getTracks().forEach(function(t){t.stop()});
-  navigator.mediaDevices.getUserMedia({video:{facingMode:currentFacingMode},audio:true}).then(function(stream){
+  navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30},facingMode:currentFacingMode},audio:true}).then(function(stream){
     localStream=stream;$localVid.srcObject=stream;
     if(activeCall){var sender=activeCall.peerConnection.getSenders().find(function(s){return s.track&&s.track.kind==='video'});if(sender)sender.replaceTrack(stream.getVideoTracks()[0])}
   }).catch(function(){toast('Camera switch failed')});
