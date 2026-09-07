@@ -92,7 +92,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .rec-item.on .rec-dot{background:var(--olive);box-shadow:0 0 6px rgba(79,107,58,0.6)}
 .rec-id{font-family:var(--sans);font-size:14px;font-weight:600;letter-spacing:0.5px;color:var(--tx2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rec-item.on .rec-id{color:var(--wh)}
-.rec-del{color:var(--tx3);background:none;border:none;padding:0 5px;cursor:pointer;font-size:16px;-webkit-tap-highlight-color:transparent}
+.rec-del{color:var(--tx3);background:none;border:none;padding:5px;cursor:pointer;font-size:16px;-webkit-tap-highlight-color:transparent}
 .rec-del:active{color:var(--red)}
 .ch-hdr{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-shrink:0;border-bottom:1px solid var(--bd2);background:var(--bg)}
 .ch-hdr-l{display:flex;flex-direction:column;flex:1;min-width:0;cursor:pointer}
@@ -117,18 +117,18 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .ecb:active{opacity:.7}
 .ecb svg{width:13px;height:13px}
 .cb-mu{font-size:10px;font-weight:700;letter-spacing:1px;padding:5px 10px}
-.ch-bd{flex:1;min-height:0;overflow-y:auto;padding:12px 16px}
+.ch-bd{flex:1;min-height:0;overflow-y:auto;padding:12px 16px;-webkit-user-select:none;user-select:none}
 .ch-bd::-webkit-scrollbar{width:2px}
 .ch-bd::-webkit-scrollbar-thumb{background:var(--bd)}
 .mg{margin-bottom:4px;display:flex;flex-direction:column;animation:fadeInUp .3s ease-out}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .mg-y{align-items:flex-end}.mg-p{align-items:flex-start}.mg-s{align-items:center}
-.mb{max-width:88%;padding:8px 12px;font-size:13px;line-height:1.5;word-break:break-word;position:relative}
+.mb{max-width:88%;padding:8px 12px;font-size:13px;line-height:1.5;word-break:break-word;position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .mg-y .mb{background:var(--olive);color:var(--wh)}
 .mg-p .mb{background:var(--s2);color:var(--tx);border:1px solid var(--bd2)}
-.mg-s .mb{background:none;color:var(--tx3);font-style:italic;font-size:11px;padding:4px 0}
-.mb img, .mb video { max-width: 100%; height: auto; display: block; border-radius: 4px; margin-bottom: 4px; cursor: pointer; }
-.mb video { max-height: 200px; }
+.mg-s .mb{background:none;color:var(--tx3);font-style:italic;font-size:11px;padding:4px 0;cursor:default}
+.mb img, .mb video { max-width: 100%; height: auto; display: block; border-radius: 4px; margin-bottom: 4px; pointer-events: none; }
+.mb video { max-height: 200px; pointer-events: auto; }
 .mt{font-size:9px;color:var(--tx3);margin-top:2px;padding:0 4px;letter-spacing:.3px;display:flex;align-items:center;gap:4px}
 .mg-y .mt{color:rgba(255,255,255,.25)}
 .tick{font-size:11px;color:rgba(255,255,255,.4)}
@@ -138,8 +138,6 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .file-dl-info{display:flex;flex-direction:column;overflow:hidden}
 .file-dl-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .file-dl-size{font-size:10px;color:var(--tx2)}
-.msg-reply-btn{position:absolute;top:-8px;right:-8px;width:20px;height:20px;border-radius:50%;background:var(--s3);color:var(--tx2);border:1px solid var(--bd2);display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;opacity:0;transition:opacity .2s}
-.mb:hover .msg-reply-btn{opacity:1}
 .msg-quote{border-left:2px solid var(--olive);padding:4px 8px;margin-bottom:4px;font-size:11px;color:var(--tx2);background:rgba(0,0,0,0.2);border-radius:2px;max-width:150px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .reply-bar{display:none;padding:8px 16px;background:var(--s1);border-top:1px solid var(--bd2);align-items:center;gap:10px}
 .reply-bar.show{display:flex}
@@ -218,6 +216,12 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .media-ov{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:850;display:none;align-items:center;justify-content:center;padding:20px}
 .media-ov.show{display:flex}
 .media-ov img, .media-ov video{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px}
+.act-menu{position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--bd);padding:8px 0;display:none;flex-direction:column;z-index:950;transform:translateY(100%);transition:transform .2s}
+.act-menu.show{display:flex;transform:translateY(0)}
+.act-item{padding:14px 20px;color:var(--tx);font-size:14px;cursor:pointer;display:flex;align-items:center;gap:12px;-webkit-tap-highlight-color:transparent}
+.act-item:active{background:var(--s2)}
+.act-item svg{width:18px;height:18px}
+.act-cancel{margin-top:8px;border-top:1px solid var(--bd2);color:var(--tx2);justify-content:center}
 @media(max-width:380px){.id-v{font-size:15px;letter-spacing:1.5px}.qr-w canvas{width:66px;height:66px}.sqr-b canvas{width:80px;height:80px}.co-id{font-size:20px}}
 </style>
 </head>
@@ -318,7 +322,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
     <button onclick="cancelReply()">✕</button>
   </div>
   <div class="ch-bar">
-    <input type="file" id="fileInput" accept="*/*" style="display:none">
+    <input type="file" id="fileInput" accept="*/*" multiple style="display:none">
     <button class="fb" id="fBtn" onclick="document.getElementById('fileInput').click()" disabled aria-label="Send file">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
     </button>
@@ -373,6 +377,7 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
       <div class="ssl">Active Session</div>
       <button class="btn b-gh b-fl cuts" onclick="disconn()">DISCONNECT</button>
       <button class="btn b-gh b-fl cuts" onclick="clrChat()" style="margin-top:6px">CLEAR MESSAGES</button>
+      <button class="btn b-rd b-fl cuts" onclick="deleteCurrentChat()" style="margin-top:6px">DELETE THIS CHAT</button>
       <div class="sdv"></div>
     </div>
     <div class="ss">
@@ -440,6 +445,22 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
   <video id="mediaViewVid" src="" controls></video>
 </div>
 
+<div class="act-menu" id="actMenu">
+  <div class="act-item" onclick="actReply()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+    Reply
+  </div>
+  <div class="act-item" onclick="actCopy()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    Copy Text
+  </div>
+  <div class="act-item" style="color:var(--red)" onclick="actDelete()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    Delete (for me)
+  </div>
+  <div class="act-item act-cancel" onclick="hideActionMenu()">Cancel</div>
+</div>
+
 <div class="tst" id="tst"></div>
 <audio id="rAud" autoplay></audio>
 
@@ -451,6 +472,7 @@ var isTyping=false,peerTyping=false,typingTimeout=null,peerTypingTimeout=null;
 var incomingFile=null,reconnectAttempts=0,audioCtx=null;
 var currentFacingMode='user',html5QrCode=null,isVideoCall=false;
 var wakeLock = null, replyTo = null, disappearingOn = false;
+var activeActionMsg = null;
 var BASE='https://direct-drop-p2p.vercel.app';
 
 var $mId=document.getElementById('mId'),$hS=document.getElementById('hS'),$hD=document.getElementById('hD');
@@ -471,6 +493,7 @@ var $vPeer=document.getElementById('vPeer'),$vSub=document.getElementById('vSub'
 var $dpxBtn=document.getElementById('dpxBtn');
 var $replyBar=document.getElementById('replyBar'),$replyTxt=document.getElementById('replyTxt');
 var $mediaOv=document.getElementById('mediaOv'),$mediaViewImg=document.getElementById('mediaViewImg'),$mediaViewVid=document.getElementById('mediaViewVid');
+var $actMenu=document.getElementById('actMenu');
 
  $mIn.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}handleTyping()});
  $mIn.addEventListener('paste', handlePaste);
@@ -584,16 +607,14 @@ function notifyUser(msg) {
 // --- Chat History ---
 function getChatHistory(id){if(!id)return[];try{return JSON.parse(localStorage.getItem('dd-p2p-chat-'+id)||'[]')}catch(e){return[]}}
 function saveChatMsg(id,msgObj){
-  if(!id||msgObj.disappear)return; // Don't save disappearing messages
+  if(!id||msgObj.disappear)return; 
   var hist=getChatHistory(id);
-  
   var liteMsgObj = msgObj;
   if(msgObj.kind === 'media' && msgObj.media) {
     saveMediaToDB(msgObj.ts, msgObj.media.data);
     liteMsgObj = JSON.parse(JSON.stringify(msgObj));
     liteMsgObj.media.data = 'indexed_db';
   }
-  
   hist.push(liteMsgObj);
   if(hist.length>200)hist=hist.slice(hist.length-200);
   try{ localStorage.setItem('dd-p2p-chat-'+id,JSON.stringify(hist)); } catch(e){ hist.pop(); toast('Storage limit reached.'); }
@@ -612,6 +633,15 @@ function deleteContact(e,id){
     localStorage.setItem('dd-p2p-recent',JSON.stringify(recents));
     localStorage.removeItem('dd-p2p-chat-'+id);
     renderRecents();
+  }
+}
+function deleteCurrentChat(){
+  if(!friendId)return;
+  if(confirm('Delete this contact and all chat history?')){
+    var recents=getRecents().filter(function(r){return r!==friendId});
+    localStorage.setItem('dd-p2p-recent',JSON.stringify(recents));
+    localStorage.removeItem('dd-p2p-chat-'+friendId);
+    goBack();
   }
 }
 function renderRecents(){
@@ -658,6 +688,30 @@ function setReply(ts, txt){
 }
 function cancelReply(){ replyTo = null; $replyBar.classList.remove('show'); }
 
+// --- Action Menu Logic ---
+function showActionMenu(ts, txt) {
+  activeActionMsg = { ts: ts, txt: txt };
+  $actMenu.classList.add('show');
+}
+function hideActionMenu() { $actMenu.classList.remove('show'); activeActionMsg = null; }
+function actReply() { if(activeActionMsg) setReply(activeActionMsg.ts, activeActionMsg.txt); hideActionMenu(); }
+function actCopy() {
+  if(activeActionMsg && activeActionMsg.txt) {
+    navigator.clipboard.writeText(activeActionMsg.txt).then(function(){toast('Copied')}).catch(function(){toast('Copy failed')});
+  } else { toast('Cannot copy media'); }
+  hideActionMenu();
+}
+function actDelete() {
+  if(!activeActionMsg || !friendId) return hideActionMenu();
+  var ts = activeActionMsg.ts;
+  var el = document.querySelector('.mt[data-ts="'+ts+'"]');
+  if(el) el.parentNode.remove();
+  var hist = getChatHistory(friendId).filter(function(m){ return m.ts !== ts; });
+  localStorage.setItem('dd-p2p-chat-'+friendId, JSON.stringify(hist));
+  toast('Deleted');
+  hideActionMenu();
+}
+
 // --- Media Viewer ---
 function openMediaViewer(src, isVideo){
   if(isVideo){
@@ -680,22 +734,31 @@ function closeMediaViewer(){
 // --- Media & Files ---
 function formatBytes(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB'}
 function handlePaste(e){if(!conn||!conn.open)return;var items=e.clipboardData.items;for(var i in items){if(items[i].type.indexOf('image')!==-1){processFile(items[i].getAsFile());e.preventDefault()}}}
-function handleFileSelect(){var file=$fileInput.files[0];if(!file)return;processFile(file);$fileInput.value=''}
-function processFile(file){
-  if(!file)return;if(file.size>10*1024*1024){toast('File too large (Max 10MB)');return}
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var ts = Date.now() + Math.random();
-    var msg = { t: 'you', kind: 'media', txt: '', media: { name: file.name, type: file.type, data: e.target.result, size: file.size }, ts: ts, status: 'pending', replyTo: replyTo, disappear: disappearingOn };
-    if (conn && conn.open) {
-      conn.send({ t: 'msg', kind: 'media', txt: '', media: msg.media, ts: ts, replyTo: replyTo, disappear: disappearingOn });
-      msg.status = 'sent';
-    } else { toast('Offline: Media queued'); }
-    saveChatMsg(friendId, msg);
-    appendMsgToDOM(msg);
-    cancelReply();
-  };
-  reader.readAsDataURL(file);
+function handleFileSelect(){
+  var files = $fileInput.files;
+  if(!files || files.length === 0) return;
+  for(var i=0; i<files.length; i++){
+    processFile(files[i], i * 100); 
+  }
+  $fileInput.value='';
+}
+function processFile(file, delay){
+  setTimeout(function(){
+    if(!file)return;if(file.size>10*1024*1024){toast('File too large (Max 10MB)');return}
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var ts = Date.now() + Math.random();
+      var msg = { t: 'you', kind: 'media', txt: '', media: { name: file.name, type: file.type, data: e.target.result, size: file.size }, ts: ts, status: 'pending', replyTo: replyTo, disappear: disappearingOn };
+      if (conn && conn.open) {
+        conn.send({ t: 'msg', kind: 'media', txt: '', media: msg.media, ts: ts, replyTo: replyTo, disappear: disappearingOn });
+        msg.status = 'sent';
+      } else { toast('Offline: Media queued'); }
+      saveChatMsg(friendId, msg);
+      appendMsgToDOM(msg);
+      cancelReply();
+    };
+    reader.readAsDataURL(file);
+  }, delay || 0);
 }
 
 // --- Rendering ---
@@ -717,12 +780,11 @@ function appendMsgToDOM(msg){
     if(msg.media.type.startsWith('image/')) {
       var img = document.createElement('img');
       if(isIndexed){ getMediaFromDB(msg.ts, function(data){ if(data) img.src = data; }); } else { img.src = msg.media.data; }
-      img.onclick = function(){ openMediaViewer(img.src, false); };
       b.appendChild(img);
     } else if(msg.media.type.startsWith('video/')) {
       var vid = document.createElement('video');
       if(isIndexed){ getMediaFromDB(msg.ts, function(data){ if(data) vid.src = data; }); } else { vid.src = msg.media.data; }
-      vid.controls = true; vid.onclick = function(){ openMediaViewer(vid.src, true); }; b.appendChild(vid);
+      vid.controls = true; b.appendChild(vid);
     } else {
       var link = document.createElement('a'); link.download = msg.media.name || 'file'; link.className = 'file-dl cutxs';
       if(isIndexed){ getMediaFromDB(msg.ts, function(data){ if(data) link.href = data; }); } else { link.href = msg.media.data; }
@@ -733,23 +795,15 @@ function appendMsgToDOM(msg){
     }
   } else { b.textContent = msg.txt; }
   
-  // Reply Button
+  // Attach Action Menu Click
   if(msg.t !== 'sys'){
-    var rBtn = document.createElement('button'); rBtn.className = 'msg-reply-btn'; rBtn.innerHTML = '↩';
-    rBtn.onclick = function(){ setReply(msg.ts, msg.txt || 'Media'); };
-    b.appendChild(rBtn);
+    b.onclick = function(){ showActionMenu(msg.ts, msg.txt || 'Media'); };
   }
   
   d.appendChild(b);d.appendChild(tm);$cBody.appendChild(d);$cBody.scrollTop=$cBody.scrollHeight;
   
   if(msg.disappear){
-    setTimeout(function(){
-      d.remove();
-      if(msg.t==='you' && friendId){
-        var hist=getChatHistory(friendId);
-        // Since it wasn't saved, nothing to remove from LS. Just remove from DOM.
-      }
-    }, 10000);
+    setTimeout(function(){ d.remove(); }, 10000);
   }
 }
 function addMsg(t,txt,kind,media,status,ts){
@@ -802,7 +856,7 @@ function shrQR(){
 function setHdr(t,c){$hS.textContent=t;$hS.className='hdr-s '+c;$hD.className='dt '+c}
 function toast(m){$tst.textContent=m;$tst.classList.add('show');setTimeout(function(){$tst.classList.remove('show')},1800)}
 function switchToChat(){sSetup.classList.remove('on');sChat.classList.add('on');sCnSec.style.display='block';mIn.focus()}
-function goBack(){if(voiceOn||isVideoCall)endCall();if(retryInterval)clearInterval(retryInterval);releaseWakeLock();disappearingOn=false;$dpxBtn.classList.remove('on');cancelReply();sChat.classList.remove('on');sSetup.classList.add('on');renderRecents()}
+function goBack(){if(voiceOn||isVideoCall)endCall();if(retryInterval)clearInterval(retryInterval);releaseWakeLock();disappearingOn=false;$dpxBtn.classList.remove('on');cancelReply();hideActionMenu();sChat.classList.remove('on');sSetup.classList.add('on');renderRecents()}
 function openSet(){sBg.classList.add('op');sDr.classList.add('op')}
 function closeSet(){sBg.classList.remove('op');sDr.classList.remove('op')}
 function cpId(){var t=mId.textContent;navigator.clipboard.writeText(t).then(function(){toast('Copied')}).catch(function(){var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Copied')})}
