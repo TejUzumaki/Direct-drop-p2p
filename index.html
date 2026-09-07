@@ -184,7 +184,6 @@ body{font-family:var(--sans);background:#030303;color:var(--tx)}
 .scan-area{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 #qrReader{width:100%;height:100%;object-fit:cover}
 #qrReader video{width:100%;height:100%;object-fit:cover}
-/* PERFECT ALIGNMENT FIX FOR SCANNER */
 .scan-overlay-box{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   width:75%;max-width:320px;aspect-ratio:1/1;
@@ -457,6 +456,37 @@ var $vPeer=document.getElementById('vPeer'),$vSub=document.getElementById('vSub'
  $fileInput.addEventListener('change',handleFileSelect);
 window.addEventListener('focus', function() { document.title = 'DIRECTDROP'; });
 
+// --- IndexedDB for Media Persistence ---
+var ddDb = null;
+function initDB() {
+  return new Promise(function(resolve, reject) {
+    var request = indexedDB.open('DirectDropDB', 1);
+    request.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains('media')) { db.createObjectStore('media'); }
+    };
+    request.onsuccess = function(e) { ddDb = e.target.result; resolve(ddDb); };
+    request.onerror = function(e) { reject(e); };
+  });
+}
+initDB();
+function saveMediaToDB(ts, data) {
+  if (!ddDb) return;
+  try {
+    var tx = ddDb.transaction('media', 'readwrite');
+    tx.objectStore('media').put(data, ts);
+  } catch(e) { console.log("IDB save error", e); }
+}
+function getMediaFromDB(ts, callback) {
+  if (!ddDb) { callback(null); return; }
+  try {
+    var tx = ddDb.transaction('media', 'readonly');
+    var req = tx.objectStore('media').get(ts);
+    req.onsuccess = function(e) { callback(e.target.result); };
+    req.onerror = function(e) { callback(null); };
+  } catch(e) { callback(null); }
+}
+
 // --- PWA & Notifications ---
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/service-worker.js').catch(function(e){console.log('SW Error:',e)});
@@ -519,7 +549,26 @@ function notifyUser(msg) {
 
 // --- Chat History ---
 function getChatHistory(id){if(!id)return[];try{return JSON.parse(localStorage.getItem('dd-p2p-chat-'+id)||'[]')}catch(e){return[]}}
-function saveChatMsg(id,msgObj){if(!id||msgObj.kind==='media')return;var hist=getChatHistory(id);hist.push(msgObj);if(hist.length>200)hist=hist.slice(hist.length-200);try{localStorage.setItem('dd-p2p-chat-'+id,JSON.stringify(hist))}catch(e){toast('Storage full. Media skipped from history.')}}
+function saveChatMsg(id,msgObj){
+  if(!id)return;
+  var hist=getChatHistory(id);
+  
+  var liteMsgObj = msgObj;
+  if(msgObj.kind === 'media' && msgObj.media) {
+    saveMediaToDB(msgObj.ts, msgObj.media.data);
+    liteMsgObj = JSON.parse(JSON.stringify(msgObj));
+    liteMsgObj.media.data = 'indexed_db';
+  }
+  
+  hist.push(liteMsgObj);
+  if(hist.length>200)hist=hist.slice(hist.length-200);
+  try{
+    localStorage.setItem('dd-p2p-chat-'+id,JSON.stringify(hist));
+  }catch(e){
+    hist.pop();
+    toast('Storage limit reached. Could not save history.');
+  }
+}
 function clearChatHistory(id){if(id)localStorage.removeItem('dd-p2p-chat-'+id)}
 function loadChatHistory(id){$cBody.innerHTML='';var hist=getChatHistory(id);if(hist.length===0){appendMsgToDOM({t:'sys',txt:'No messages yet. Say hi!',ts:Date.now()})}else{hist.forEach(function(msg){appendMsgToDOM(msg)})}}
 
@@ -585,15 +634,29 @@ function appendMsgToDOM(msg){
   tm.innerHTML=timeStr+tick;tm.setAttribute('data-ts',msg.ts);
   if(msg.t==='sys'){d.className='mg mg-s';b.className='mb';b.textContent=msg.txt}
   else if(msg.t==='you'){d.className='mg mg-y';b.className='mb'}else{d.className='mg mg-p';b.className='mb'}
-  if(msg.kind === 'media') {
+  
+  if(msg.kind === 'media' && msg.media) {
+    var isIndexed = (msg.media.data === 'indexed_db');
+    
     if(msg.media.type.startsWith('image/')) {
-      var img = document.createElement('img'); img.src = msg.media.data; b.appendChild(img);
+      var img = document.createElement('img');
+      if(isIndexed) {
+        getMediaFromDB(msg.ts, function(data){ if(data) img.src = data; });
+      } else { img.src = msg.media.data; }
+      b.appendChild(img);
       if(msg.txt) { var p = document.createElement('span'); p.textContent = msg.txt; b.appendChild(p); }
     } else if(msg.media.type.startsWith('video/')) {
-      var vid = document.createElement('video'); vid.src = msg.media.data; vid.controls = true; b.appendChild(vid);
+      var vid = document.createElement('video');
+      if(isIndexed) {
+        getMediaFromDB(msg.ts, function(data){ if(data) vid.src = data; });
+      } else { vid.src = msg.media.data; }
+      vid.controls = true; b.appendChild(vid);
       if(msg.txt) { var p = document.createElement('span'); p.textContent = msg.txt; b.appendChild(p); }
     } else {
-      var link = document.createElement('a'); link.href = msg.media.data; link.download = msg.media.name || 'file'; link.className = 'file-dl cutxs';
+      var link = document.createElement('a'); link.download = msg.media.name || 'file'; link.className = 'file-dl cutxs';
+      if(isIndexed) {
+        getMediaFromDB(msg.ts, function(data){ if(data) link.href = data; });
+      } else { link.href = msg.media.data; }
       link.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
       var info = document.createElement('div'); info.className = 'file-dl-info';
       info.innerHTML = '<span class="file-dl-name">'+(msg.media.name||'File')+'</span><span class="file-dl-size">'+formatBytes(msg.media.size||0)+'</span>';
