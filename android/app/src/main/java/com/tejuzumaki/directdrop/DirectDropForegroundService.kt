@@ -39,7 +39,7 @@ class DirectDropForegroundService : Service() {
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("DirectDrop: $peerName")
                 .setContentText(if (message.isNotEmpty()) message else "Incoming call")
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(android.R.drawable.sym_def_app_icon)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .build()
             startForeground(1, notification)

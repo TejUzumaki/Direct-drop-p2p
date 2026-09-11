@@ -544,7 +544,23 @@ function setAlias(){ if(!friendId)return; var alias=prompt('Set custom nickname 
 
 // --- Notifications ---
 function playPing(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=880;o.type='sine';g.gain.setValueAtTime(0.1,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.2);o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+0.2)}catch(e){}}
-function notifyUser(msg) { if (!document.hasFocus() || document.hidden) { try { navigator.vibrate(200); } catch(e) {} playPing(); document.title = '(1) DIRECTDROP'; var notifBody = 'New message'; if (msg) { if (msg.kind === 'media') notifBody = 'New media received'; else if (msg.txt) notifBody = msg.txt; } if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.LocalNotifications) { Capacitor.Plugins.LocalNotifications.requestPermissions().then(function(status) { if (status.display === 'granted') { Capacitor.Plugins.LocalNotifications.create({ notifications: [{ title: 'DIRECTDROP', body: notifBody, id: Date.now(), smallIcon: 'ic_launcher' }] }); } }); } else if ('Notification' in window && Notification.permission === 'granted') { try { var n = new Notification('DIRECTDROP', { body: notifBody, icon: '/icon.png', tag: 'directdrop-msg' }); n.onclick = function() { window.focus(); this.close(); }; } catch(e) {} } } }
+function notifyUser(msg) {
+  if (!document.hasFocus() || document.hidden) {
+    try { navigator.vibrate(200); } catch(e) {} playPing(); document.title = '(1) DIRECTDROP';
+    var notifBody = 'New message';
+    if (msg) { if (msg.kind === 'media') notifBody = 'New media received'; else if (msg.txt) notifBody = msg.txt; }
+    var peerName = cPeer ? cPeer.textContent : 'Unknown';
+    
+    // Native Android Bridge Hook (No Capacitor needed)
+    if (window.DirectDropNative && window.DirectDropNative.showNotification) {
+      window.DirectDropNative.showNotification(peerName, notifBody);
+    } else if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.LocalNotifications) {
+      Capacitor.Plugins.LocalNotifications.requestPermissions().then(function(status) { if (status.display === 'granted') { Capacitor.Plugins.LocalNotifications.create({ notifications: [{ title: 'DIRECTDROP', body: notifBody, id: Date.now(), smallIcon: 'ic_launcher' }] }); } });
+    } else if ('Notification' in window && Notification.permission === 'granted') {
+      try { var n = new Notification('DIRECTDROP', { body: notifBody, icon: '/icon.png', tag: 'directdrop-msg' }); n.onclick = function() { window.focus(); this.close(); }; } catch(e) {}
+    }
+  }
+}
 
 // --- Chat History ---
 function getChatHistory(id){if(!id)return[];try{return JSON.parse(localStorage.getItem('dd-p2p-chat-'+id)||'[]')}catch(e){return[]}}
@@ -603,7 +619,6 @@ function processFile(file, delay){ setTimeout(function(){ if(!file)return;if(fil
 
 // --- Rendering ---
 function appendMsgToDOM(msg){
-  // Try to group media
   if(msg.kind === 'media' && msg.t !== 'sys' && !msg.replyTo) {
     var lastMsg = $cBody.lastElementChild;
     if (lastMsg) {
@@ -727,7 +742,14 @@ function initPeer(){
   peer=new Peer(myId,{debug:0});
   peer.on('open',function(id){setHdr('ONLINE','on');cBtn.disabled=false;vidBtn.disabled=false;idEr.classList.remove('show');reconnectAttempts=0;renderRecents();var p=new URLSearchParams(window.location.search),t=p.get('connect');if(t&&t.trim()!==id&&t.trim().toUpperCase()!==id){fIn.value=t.trim().toUpperCase();manConn();window.history.replaceState({},'',window.location.pathname)}});
   peer.on('connection',function(dc){if(dc.metadata&&dc.metadata.ping){dc.on('open',function(){try{dc.close()}catch(e){}});return}if(conn&&conn.open){dc.on('open',function(){dc.close()});return}conn=dc;friendId=dc.peer;loadChatHistory(friendId);cPeer.textContent=getPeerName(friendId);cSub.textContent='Online';cSub.className='ch-ps lv';mIn.disabled=false;sBtn.disabled=false;callBtn.disabled=false;vidBtn.disabled=false;fBtn.disabled=false;switchToChat();wireChat()});
-  peer.on('call',function(call){ if(!conn||!conn.open||conn.peer!==call.peer){if(conn){try{conn.close()}catch(e){}conn=null}friendId=call.peer;loadChatHistory(friendId);cPeer.textContent=getPeerName(friendId);switchToChat()} incomingCall=call;isVideoCall = call.metadata && call.metadata.type === 'video'; coId.textContent=getPeerName(call.peer);coLbl.textContent = isVideoCall ? 'Incoming Video Call' : 'Incoming Voice Call';coSub.textContent = isVideoCall ? 'Video channel request' : 'Voice channel request'; cOv.classList.add('show');setCallUI('incoming'); });
+  peer.on('call',function(call){ 
+    if(!conn||!conn.open||conn.peer!==call.peer){if(conn){try{conn.close()}catch(e){}conn=null}friendId=call.peer;loadChatHistory(friendId);cPeer.textContent=getPeerName(friendId);switchToChat()} 
+    incomingCall=call;isVideoCall = call.metadata && call.metadata.type === 'video'; 
+    coId.textContent=getPeerName(call.peer);coLbl.textContent = isVideoCall ? 'Incoming Video Call' : 'Incoming Voice Call';coSub.textContent = isVideoCall ? 'Video channel request' : 'Voice channel request';
+    cOv.classList.add('show');setCallUI('incoming');
+    // Trigger Native Ringing
+    if (window.DirectDropNative && window.DirectDropNative.startRinging) { window.DirectDropNative.startRinging(getPeerName(call.peer)); }
+  });
   peer.on('error',function(err){console.error('PeerJS:',err.type,err);if(err.type==='unavailable-id'){setHdr('CONFLICT','er');idEr.classList.add('show');toast('Callsign conflict. Regenerating...');localStorage.removeItem('wz-p2p-id');setTimeout(function(){location.reload()},2000)}else if(err.type==='peer-unavailable'){if(isManualConnecting){handleManualConnError(friendId)}}else if(err.type==='network'||err.type==='server-error'||err.type==='socket-error'||err.type==='socket-closed'){setHdr('RECONNECTING','lk');if(!peer.destroyed)try{peer.reconnect()}catch(e){}}else{setHdr('ERROR','er');addMsg('sys','Error: '+err.type)}});
   peer.on('disconnected',function(){setHdr('RECONNECTING','lk');if(!peer.destroyed&&reconnectAttempts<3){reconnectAttempts++;setTimeout(function(){try{peer.reconnect()}catch(e){}},1000)}else if(!peer.destroyed){setHdr('OFFLINE','er')}});
 }
@@ -772,9 +794,9 @@ function getVideoMic(){if(localStream&&localStream.active&&localStream.getVideoT
 function placeCall(){if(!friendId||!conn||!conn.open)return;isVideoCall=false;setCallUI('calling');getMic().then(function(stream){activeCall=peer.call(friendId,stream,{metadata:{type:'audio'}});if(!activeCall){addMsg('sys','Call failed.');setCallUI('idle');return}activeCall.on('stream',function(r){rAud.srcObject=r;voiceOn=true;startTimer();setCallUI('connected');addMsg('sys','Voice channel open.')});activeCall.on('close',handleEnd);activeCall.on('error',handleEnd)}).catch(function(){setCallUI('idle')})}
 function placeVideoCall(){if(!friendId||!conn||!conn.open)return;isVideoCall=true;setCallUI('calling');getVideoMic().then(function(stream){$localVid.srcObject=stream;$vCallOv.classList.add('show');$vPeer.textContent=getPeerName(friendId);$vSub.textContent='Calling...';activeCall=peer.call(friendId,stream,{metadata:{type:'video'}});if(!activeCall){addMsg('sys','Call failed.');handleEnd();return}activeCall.on('stream',function(r){$remoteVid.srcObject=r;voiceOn=true;startTimer();setCallUI('connected');addMsg('sys','Video channel open.')});activeCall.on('close',handleEnd);activeCall.on('error',handleEnd)}).catch(function(){handleEnd()})}
 function accCall(){cOv.classList.remove('show');if(!incomingCall)return;var callIsVideo = incomingCall.metadata && incomingCall.metadata.type === 'video';isVideoCall = callIsVideo;var getMedia = callIsVideo ? getVideoMic() : getMic();getMedia.then(function(stream){if(callIsVideo){$localVid.srcObject=stream;$vCallOv.classList.add('show');$vPeer.textContent=getPeerName(friendId);$vSub.textContent='Connecting...'}activeCall=incomingCall;incomingCall=null;activeCall.answer(stream);activeCall.on('stream',function(r){if(callIsVideo){$remoteVid.srcObject=r;voiceOn=true;startTimer();setCallUI('connected');addMsg('sys','Video channel open.')}else{rAud.srcObject=r;voiceOn=true;startTimer();setCallUI('connected');addMsg('sys','Voice channel open.')}});activeCall.on('close',handleEnd);activeCall.on('error',handleEnd);}).catch(function(){if(incomingCall)try{incomingCall.close()}catch(e){}incomingCall=null;cOv.classList.remove('show');setCallUI('idle')});}
-function decCall(){cOv.classList.remove('show');if(incomingCall){try{incomingCall.close()}catch(e){}incomingCall=null}setCallUI('idle')}
+function decCall(){cOv.classList.remove('show');if(incomingCall){try{incomingCall.close()}catch(e){}incomingCall=null}setCallUI('idle'); if (window.DirectDropNative && window.DirectDropNative.stopRinging) { window.DirectDropNative.stopRinging(); }}
 function endCall(){if(conn&&conn.open)try{conn.send({t:'voice_end'})}catch(e){}if(activeCall){try{activeCall.close()}catch(e){}activeCall=null}handleEnd()}
-function handleEnd(){voiceOn=false;isMuted=false;isVideoCall=false;stopTimer();$vCallOv.classList.remove('show');if($remoteVid)$remoteVid.srcObject=null;if($localVid)$localVid.srcObject=null;if(activeCall){try{activeCall.close()}catch(e){}activeCall=null}rAud.srcObject=null;cOv.classList.remove('show');if(localStream){localStream.getTracks().forEach(function(t){t.stop()});localStream=null}if(conn&&conn.open){setCallUI('idle');cSub.textContent='Online';cSub.className='ch-ps lv'}else{setCallUI('idle');cSub.textContent='Offline';cSub.className='ch-ps'}}
+function handleEnd(){voiceOn=false;isMuted=false;isVideoCall=false;stopTimer();$vCallOv.classList.remove('show');if($remoteVid)$remoteVid.srcObject=null;if($localVid)$localVid.srcObject=null;if(activeCall){try{activeCall.close()}catch(e){}activeCall=null}rAud.srcObject=null;cOv.classList.remove('show');if(localStream){localStream.getTracks().forEach(function(t){t.stop()});localStream=null}if(conn&&conn.open){setCallUI('idle');cSub.textContent='Online';cSub.className='ch-ps lv'}else{setCallUI('idle');cSub.textContent='Offline';cSub.className='ch-ps'} if (window.DirectDropNative && window.DirectDropNative.stopRinging) { window.DirectDropNative.stopRinging(); }}
 function togMute(){if(!localStream)return;isMuted=!isMuted;localStream.getAudioTracks().forEach(function(t){t.enabled=!isMuted});muBtn.textContent=isMuted?'UNMUTE':'MUTE'}
 function switchCamera(){if(!localStream||localStream.getVideoTracks().length===0)return;currentFacingMode=(currentFacingMode==='user')?'environment':'user';localStream.getTracks().forEach(function(t){t.stop()});navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30},facingMode:currentFacingMode},audio:true}).then(function(stream){localStream=stream;$localVid.srcObject=stream;if(activeCall){var sender=activeCall.peerConnection.getSenders().find(function(s){return s.track&&s.track.kind==='video'});if(sender)sender.replaceTrack(stream.getVideoTracks()[0])}}).catch(function(){toast('Camera switch failed')});}
 
