@@ -10,7 +10,6 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
 
 class DirectDropForegroundService : Service() {
     companion object {
@@ -36,20 +35,32 @@ class DirectDropForegroundService : Service() {
         val message = intent.getStringExtra("message") ?: ""
 
         if (action == "SHOW_NOTIFICATION" || action == "START_RINGING") {
-            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("DirectDrop: $peerName")
-                .setContentText(if (message.isNotEmpty()) message else "Incoming call")
-                .setSmallIcon(android.R.drawable.sym_def_app_icon)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .build()
+            val notification: Notification
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                notification = Notification.Builder(this, CHANNEL_ID)
+                    .setContentTitle("DirectDrop: $peerName")
+                    .setContentText(if (message.isNotEmpty()) message else "Incoming call")
+                    .setSmallIcon(android.R.drawable.sym_def_app_icon)
+                    .build()
+            } else {
+                @Suppress("DEPRECATION")
+                notification = Notification.Builder(this)
+                    .setContentTitle("DirectDrop: $peerName")
+                    .setContentText(if (message.isNotEmpty()) message else "Incoming call")
+                    .setSmallIcon(android.R.drawable.sym_def_app_icon)
+                    .build()
+            }
+            
             startForeground(1, notification)
 
             if (action == "START_RINGING") {
                 val alarmTone: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
                 val ringtone = RingtoneManager.getRingtone(applicationContext, alarmTone)
-                ringtone.audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                    .build()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    ringtone.audioAttributes = AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                        .build()
+                }
                 ringtone.play()
             }
         } else if (action == "STOP_RINGING") {
